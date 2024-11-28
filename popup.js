@@ -465,7 +465,7 @@ const KEY_PATTERNS = {
   custom: /sk-[a-zA-Z0-9]+/g
 };
 
-// 修改自动填充功能
+// 修改自动识别功能
 document.getElementById("autoFillButton").addEventListener("click", async function() {
   const resultDiv = document.getElementById("result");
   resultDiv.innerHTML = "正在搜索 API 密钥...";
@@ -558,7 +558,7 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
     }
 
   } catch (error) {
-    resultDiv.innerHTML = `❌ 自动填充失败：${error.message}`;
-    console.error('自动填充错误:', error);
+    resultDiv.innerHTML = `❌ 自动识别失败：${error.message}`;
+    console.error('自动识别错误:', error);
   }
 });
