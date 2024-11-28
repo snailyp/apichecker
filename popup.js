@@ -98,23 +98,49 @@ document
     // 检测 Deepseek API 密钥
     if (deepseekKey) {
       try {
-        const deepseekResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${deepseekKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [{ role: 'user', content: 'Hi' }],
-            max_tokens: 10
+        // 并行发送两个请求
+        const [completionResponse, balanceResponse] = await Promise.all([
+          // 原有的 API 可用性检测
+          fetch("https://api.deepseek.com/v1/chat/completions", {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${deepseekKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'deepseek-chat',
+              messages: [{ role: 'user', content: 'Hi' }],
+              max_tokens: 10
+            })
+          }),
+          // 新增余额查询
+          fetch("https://api.deepseek.com/user/balance", {
+            headers: { 
+              'Authorization': `Bearer ${deepseekKey}`,
+              'Accept': 'application/json'
+            }
           })
-        });
-        if (deepseekResponse.ok) {
-          results.push("✅ Deepseek API 密钥有效。");
+        ]);
+
+        if (completionResponse.ok && balanceResponse.ok) {
+          const balanceData = await balanceResponse.json();
+          const balanceInfo = balanceData.balance_infos[0];
+          results.push(
+            "✅ Deepseek API 密钥有效。",
+            `💰 余额信息：`,
+            `- 总余额：${balanceInfo.total_balance} ${balanceInfo.currency}`,
+            `- 赠送余额：${balanceInfo.granted_balance} ${balanceInfo.currency}`,
+            `- 充值余额：${balanceInfo.topped_up_balance} ${balanceInfo.currency}`
+          );
         } else {
-          const errorData = await deepseekResponse.json();
-          results.push(`❌ Deepseek API 错误：${errorData.error?.message || '未知错误'}`);
+          if (!completionResponse.ok) {
+            const errorData = await completionResponse.json();
+            results.push(`❌ Deepseek API 错误：${errorData.error?.message || '未知错误'}`);
+          }
+          if (!balanceResponse.ok) {
+            const balanceError = await balanceResponse.json();
+            results.push(`❌ Deepseek 余额查询错误：${balanceError.error?.message || '未知错误'}`);
+          }
         }
       } catch (error) {
         results.push(`❌ Deepseek API 错误：${error.message}`);
@@ -150,23 +176,52 @@ document
     // 检测 Siliconflow API 密钥
     if (siliconflowKey) {
       try {
-        const siliconflowResponse = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${siliconflowKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'Qwen/Qwen2-72B-Instruct',
-            messages: [{ role: 'user', content: 'Hi' }],
-            max_tokens: 10
+        // 并行发送两个请求
+        const [completionResponse, userInfoResponse] = await Promise.all([
+          // 原有的 API 可用性检测
+          fetch("https://api.siliconflow.cn/v1/chat/completions", {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${siliconflowKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'Qwen/Qwen2-72B-Instruct',
+              messages: [{ role: 'user', content: 'Hi' }],
+              max_tokens: 10
+            })
+          }),
+          // 新增用户信息查询
+          fetch("https://api.siliconflow.cn/v1/user/info", {
+            headers: { 
+              'Authorization': `Bearer ${siliconflowKey}`
+            }
           })
-        });
-        if (siliconflowResponse.ok) {
-          results.push("✅ Siliconflow API 密钥有效。");
+        ]);
+
+        if (completionResponse.ok && userInfoResponse.ok) {
+          const userInfo = await userInfoResponse.json();
+          if (userInfo.status && userInfo.code === 20000) {
+            const data = userInfo.data;
+            results.push(
+              "✅ Siliconflow API 密钥有效。",
+              `💰 余额信息：`,
+              `- 总余额：${data.totalBalance} CNY`,
+              `- 充值余额：${data.chargeBalance} CNY`,
+              `- 赠送余额：${data.balance} CNY`
+            );
+          } else {
+            results.push(`❌ Siliconflow 用户信息查询失败：${userInfo.message}`);
+          }
         } else {
-          const errorData = await siliconflowResponse.json();
-          results.push(`❌ Siliconflow API 错误：${errorData.error?.message || '未知错误'}`);
+          if (!completionResponse.ok) {
+            const errorData = await completionResponse.json();
+            results.push(`❌ Siliconflow API 错误：${errorData.error?.message || '未知错误'}`);
+          }
+          if (!userInfoResponse.ok) {
+            const userInfoError = await userInfoResponse.json();
+            results.push(`❌ Siliconflow 用户信息查询错误：${userInfoError.message || '未知错误'}`);
+          }
         }
       } catch (error) {
         results.push(`❌ Siliconflow API 错误：${error.message}`);
@@ -216,8 +271,9 @@ document
     resultDiv.innerHTML = results.join("<br />");
   });
 
-// 添加清空按钮功能
+// 修改清空按钮功能
 document.getElementById("clearButton").addEventListener("click", function() {
+  // 清空所有输入框
   document.getElementById("openaiKey").value = "";
   document.getElementById("claudeKey").value = "";
   document.getElementById("geminiKey").value = "";
@@ -227,6 +283,9 @@ document.getElementById("clearButton").addEventListener("click", function() {
   document.getElementById("customEndpoint").value = "";
   document.getElementById("customApiKey").value = "";
   document.getElementById("result").innerHTML = "";
+  
+  // 清空所有密钥选择区域
+  document.querySelectorAll('.key-selection').forEach(el => el.remove());
 });
 
 // 修改获取模型列表的函数
@@ -326,56 +385,92 @@ const KEY_PATTERNS = {
   groq: /gsk_[a-zA-Z0-9]{52}/g
 };
 
-// 自动填充功能
+// 修改自动填充功能
 document.getElementById("autoFillButton").addEventListener("click", async function() {
   const resultDiv = document.getElementById("result");
   resultDiv.innerHTML = "正在搜索 API 密钥...";
 
   try {
-    // 获取当前活动标签页
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    // 注入并执行内容脚本
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => document.documentElement.innerText
     });
 
-    // 存储找到的密钥
+    // 存储找到的所有密钥
     const foundKeys = {};
     
     // 搜索所有类型的密钥
     for (const [platform, pattern] of Object.entries(KEY_PATTERNS)) {
-      const matches = result.match(pattern);
-      if (matches) {
-        foundKeys[platform] = matches[0];
+      const matches = [...new Set(result.match(pattern) || [])]; // 使用 Set 去重
+      if (matches.length > 0) {
+        foundKeys[platform] = matches;
       }
     }
 
-    // 填充找到的密钥到对应输入框
-    if (foundKeys.openai) {
-      document.getElementById("openaiKey").value = foundKeys.openai;
-    }
-    if (foundKeys.claude) {
-      document.getElementById("claudeKey").value = foundKeys.claude;
-    }
-    if (foundKeys.gemini) {
-      document.getElementById("geminiKey").value = foundKeys.gemini;
-    }
-    if (foundKeys.deepseek) {
-      document.getElementById("deepseekKey").value = foundKeys.deepseek;
-    }
-    if (foundKeys.groq) {
-      document.getElementById("groqKey").value = foundKeys.groq;
-    }
-    if (foundKeys.siliconflow) {
-      document.getElementById("siliconflowKey").value = foundKeys.siliconflow;
+    // 为每个平台创建密钥选择区域
+    const platformMap = {
+      'openai': 'openaiKey',
+      'claude': 'claudeKey',
+      'gemini': 'geminiKey',
+      'deepseek': 'deepseekKey',
+      'groq': 'groqKey',
+      'siliconflow': 'siliconflowKey'
+    };
+
+    // 清除之前的选择区域
+    document.querySelectorAll('.key-selection').forEach(el => el.remove());
+
+    // 为每个平台创建密钥选择区域
+    for (const [platform, keys] of Object.entries(foundKeys)) {
+      if (keys.length > 0) {
+        const inputId = platformMap[platform];
+        const input = document.getElementById(inputId);
+        
+        // 创建选择区域
+        const selectionDiv = document.createElement('div');
+        selectionDiv.className = 'key-selection';
+        selectionDiv.style.cssText = `
+          margin: 5px 0;
+          padding: 5px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 12px;
+        `;
+
+        keys.forEach((key, index) => {
+          const keyDiv = document.createElement('div');
+          keyDiv.style.cssText = `
+            padding: 5px;
+            margin: 2px 0;
+            background: #f5f5f5;
+            cursor: pointer;
+            border-radius: 3px;
+          `;
+          keyDiv.textContent = `${key}`;
+          keyDiv.title = key;
+          
+          keyDiv.addEventListener('click', () => {
+            input.value = key;
+            // 高亮选中的密钥
+            selectionDiv.querySelectorAll('div').forEach(div => {
+              div.style.background = '#f5f5f5';
+            });
+            keyDiv.style.background = '#e3f2fd';
+          });
+          
+          selectionDiv.appendChild(keyDiv);
+        });
+
+        // 将选择区域插入到输入框后面
+        input.parentNode.insertBefore(selectionDiv, input.nextSibling);
+      }
     }
 
     // 显示结果
-    const foundCount = Object.keys(foundKeys).length;
-    if (foundCount > 0) {
-      resultDiv.innerHTML = `✅ 已找到并填充 ${foundCount} 个 API 密钥`;
+    const totalKeys = Object.values(foundKeys).reduce((sum, keys) => sum + keys.length, 0);
+    if (totalKeys > 0) {
+      resultDiv.innerHTML = `✅ 已找到 ${totalKeys} 个 API 密钥，请点击选择要使用的密钥`;
     } else {
       resultDiv.innerHTML = "⚠️ 未在页面中找到任何 API 密钥";
     }

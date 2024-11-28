@@ -141,3 +141,13 @@ select:focus {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
 }
+
+.key-selection {
+  max-height: 100px;
+  overflow-y: auto;
+  background: white;
+}
+
+.key-selection div:hover {
+  background: #e3f2fd !important;
+}
