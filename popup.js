@@ -799,6 +799,8 @@ document
           if (platform === "custom") {
             document.getElementById("customApiKey").value = key;
             document.getElementById("customEndpoint").value = endpoint;
+            // 手动触发模型列表更新
+            handleModelListUpdate();
           } else {
             document.getElementById(`${platform}Key`).value = key;
           }
