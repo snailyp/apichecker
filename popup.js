@@ -408,7 +408,8 @@ const KEY_PATTERNS = {
   deepseek: /sk-[a-zA-Z0-9]{32}/g,
   openai: /(sk-[a-zA-Z0-9]{48}|sk-proj-\S{48}|sk-proj-\S{124}|sk-proj-\S{156})/g,
   groq: /gsk_[a-zA-Z0-9]{52}/g,
-  xai: /xai-[a-zA-Z0-9]{80}/g
+  xai: /xai-[a-zA-Z0-9]{80}/g,
+  custom: /sk-[a-zA-Z0-9]+/g
 };
 
 // 修改自动填充功能
@@ -442,7 +443,8 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
       'deepseek': 'deepseekKey',
       'groq': 'groqKey',
       'siliconflow': 'siliconflowKey',
-      'xai': 'xaiKey'
+      'xai': 'xaiKey',
+      'custom': 'customApiKey'
     };
 
     // 清除之前的选择区域
