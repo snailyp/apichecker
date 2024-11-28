@@ -292,3 +292,96 @@ function handleModelListUpdate() {
 // 监听两个输入框的变化
 document.getElementById("customEndpoint").addEventListener("input", handleModelListUpdate);
 document.getElementById("customApiKey").addEventListener("input", handleModelListUpdate);
+
+// 添加显示实际请求地址的函数
+function updateRequestUrl() {
+  const customEndpoint = document.getElementById("customEndpoint").value.trim();
+  const urlPreviewDiv = document.getElementById("urlPreview");
+  
+  if (customEndpoint) {
+    const processedEndpoint = customEndpoint.endsWith('/') 
+      ? customEndpoint 
+      : customEndpoint + '/v1/';
+    const fullUrl = `${processedEndpoint}chat/completions`;
+    urlPreviewDiv.textContent = `实际请求地址: ${fullUrl}`;
+    urlPreviewDiv.style.display = 'block';
+  } else {
+    urlPreviewDiv.style.display = 'none';
+  }
+}
+
+// 监听自定义接口输入框的变化
+document.getElementById("customEndpoint").addEventListener("input", updateRequestUrl);
+
+// 定义 API 密钥的正则表达式
+const KEY_PATTERNS = {
+  siliconflow: /sk-[a-zA-Z0-9]{48}/g,
+  claude: /sk-ant-api03-\S{95}/g,
+  gemini: /AIzaSy\S{33}/g,
+  deepseek: /sk-[a-zA-Z0-9]{32}/g,
+  openai: /sk-[a-zA-Z0-9]{48}/g,
+  openai:/sk-proj-\S{48}/g,
+  openai:/sk-proj-\S{124}/g,
+  openai:/sk-proj-\S{156}/g,
+  groq: /gsk_[a-zA-Z0-9]{52}/g
+};
+
+// 自动填充功能
+document.getElementById("autoFillButton").addEventListener("click", async function() {
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = "正在搜索 API 密钥...";
+
+  try {
+    // 获取当前活动标签页
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    // 注入并执行内容脚本
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => document.documentElement.innerText
+    });
+
+    // 存储找到的密钥
+    const foundKeys = {};
+    
+    // 搜索所有类型的密钥
+    for (const [platform, pattern] of Object.entries(KEY_PATTERNS)) {
+      const matches = result.match(pattern);
+      if (matches) {
+        foundKeys[platform] = matches[0];
+      }
+    }
+
+    // 填充找到的密钥到对应输入框
+    if (foundKeys.openai) {
+      document.getElementById("openaiKey").value = foundKeys.openai;
+    }
+    if (foundKeys.claude) {
+      document.getElementById("claudeKey").value = foundKeys.claude;
+    }
+    if (foundKeys.gemini) {
+      document.getElementById("geminiKey").value = foundKeys.gemini;
+    }
+    if (foundKeys.deepseek) {
+      document.getElementById("deepseekKey").value = foundKeys.deepseek;
+    }
+    if (foundKeys.groq) {
+      document.getElementById("groqKey").value = foundKeys.groq;
+    }
+    if (foundKeys.siliconflow) {
+      document.getElementById("siliconflowKey").value = foundKeys.siliconflow;
+    }
+
+    // 显示结果
+    const foundCount = Object.keys(foundKeys).length;
+    if (foundCount > 0) {
+      resultDiv.innerHTML = `✅ 已找到并填充 ${foundCount} 个 API 密钥`;
+    } else {
+      resultDiv.innerHTML = "⚠️ 未在页面中找到任何 API 密钥";
+    }
+
+  } catch (error) {
+    resultDiv.innerHTML = `❌ 自动填充失败：${error.message}`;
+    console.error('自动填充错误:', error);
+  }
+});
