@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>API 密钥检测器</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <h1>API 密钥检测器</h1>
+    <form id="apiKeyForm">
+      <label for="openaiKey">OpenAI API 密钥：</label>
+      <input type="text" id="openaiKey" name="openaiKey" /><br />
+
+      <label for="claudeKey">Claude API 密钥：</label>
+      <input type="text" id="claudeKey" name="claudeKey" /><br />
+
+      <label for="geminiKey">Gemini API 密钥：</label>
+      <input type="text" id="geminiKey" name="geminiKey" /><br />
+
+      <label for="deepseekKey">Deepseek API 密钥：</label>
+      <input type="text" id="deepseekKey" name="deepseekKey" /><br />
+
+      <label for="groqKey">Groq API 密钥：</label>
+      <input type="text" id="groqKey" name="groqKey" /><br />
+
+      <label for="siliconflowKey">Siliconflow API 密钥：</label>
+      <input type="text" id="siliconflowKey" name="siliconflowKey" /><br />
+
+      <label for="customEndpoint">自定义 OpenAI 兼容接口：</label>
+      <input type="text" id="customEndpoint" name="customEndpoint" placeholder="例如: https://api.example.com" /><br />
+      <div id="urlPreview" style="color: #666; font-size: 0.9em; margin: 5px 0;"></div>
+
+      <label for="customApiKey">自定义接口 API 密钥：</label>
+      <input type="text" id="customApiKey" name="customApiKey" /><br />
+
+      <label for="modelSelect">选择模型：</label>
+      <select id="modelSelect">
+        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+      </select><br />
+
+      <div class="button-group">
+        <button type="submit">检测密钥</button>
+        <button type="button" id="clearButton">清空输入</button>
+      </div>
+    </form>
+
+    <div id="result"></div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
