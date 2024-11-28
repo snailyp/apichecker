@@ -562,3 +562,38 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
     console.error('自动识别错误:', error);
   }
 });
+    
+// 添加滚动按钮功能
+document.getElementById('scrollTopBtn').addEventListener('click', () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  });
+  
+  document.getElementById('scrollBottomBtn').addEventListener('click', () => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth'
+    });
+  });
+  
+  // 控制滚动按钮的显示和隐藏
+  function toggleScrollButtons() {
+    const scrollButtons = document.querySelector('.scroll-buttons');
+    const scrollThreshold = 200; // 显示按钮的滚动阈值
+  
+    if (window.scrollY > scrollThreshold) {
+      scrollButtons.style.opacity = '1';
+      scrollButtons.style.pointerEvents = 'auto';
+    } else {
+      scrollButtons.style.opacity = '0';
+      scrollButtons.style.pointerEvents = 'none';
+    }
+  }
+  
+  // 添加滚动事件监听
+  window.addEventListener('scroll', toggleScrollButtons);
+  
+  // 初始化滚动按钮状态
+  toggleScrollButtons();

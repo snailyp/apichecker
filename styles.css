@@ -212,3 +212,84 @@ select:focus {
 .author-info a:hover {
   text-decoration: underline;
 }
+
+/* 导航菜单样式 */
+.nav-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-menu a {
+  padding: 6px 12px;
+  border-radius: 4px;
+  color: #1a73e8;
+  text-decoration: none;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.nav-menu a:hover {
+  background-color: #e8f0fe;
+}
+
+/* 添加平滑滚动效果 */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 调整锚点定位，防止被导航栏遮挡 */
+.section {
+  scroll-margin-top: 20px;
+}
+
+/* 滚动按钮样式 */
+.scroll-buttons {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1000;
+  }
+  
+  .scroll-buttons button {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    background-color: rgba(26, 115, 232, 0.8);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+  
+  .scroll-buttons button:hover {
+    background-color: rgba(26, 115, 232, 1);
+    transform: translateY(-2px);
+  }
+  
+  /* 在小屏幕上调整按钮位置 */
+  @media (max-width: 768px) {
+    .scroll-buttons {
+      right: 10px;
+      bottom: 10px;
+    }
+    
+    .scroll-buttons button {
+      width: 32px;
+      height: 32px;
+      font-size: 16px;
+    }
+  }
