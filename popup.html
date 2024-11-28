@@ -8,39 +8,67 @@
   <body>
     <h1>API 密钥检测器</h1>
     <form id="apiKeyForm">
-      <label for="openaiKey">OpenAI API 密钥：</label>
-      <input type="text" id="openaiKey" name="openaiKey" /><br />
+      <!-- OpenAI 相关 -->
+      <div class="section">
+        <div class="section-title">OpenAI API</div>
+        <label for="openaiKey">API 密钥：</label>
+        <input type="text" id="openaiKey" name="openaiKey" />
+      </div>
 
-      <label for="claudeKey">Claude API 密钥：</label>
-      <input type="text" id="claudeKey" name="claudeKey" /><br />
+      <!-- Claude 相关 -->
+      <div class="section">
+        <div class="section-title">Claude API</div>
+        <label for="claudeKey">API 密钥：</label>
+        <input type="text" id="claudeKey" name="claudeKey" />
+      </div>
 
-      <label for="geminiKey">Gemini API 密钥：</label>
-      <input type="text" id="geminiKey" name="geminiKey" /><br />
+      <div class="section">
+        <div class="section-title">Gemini API</div>
+        <label for="geminiKey">Gemini API 密钥：</label>
+        <input type="text" id="geminiKey" name="geminiKey" />
+      </div>
+      
+      <div class="section">
+        <div class="section-title">Deepseek API</div>
+        <label for="deepseekKey">Deepseek API 密钥：</label>
+        <input type="text" id="deepseekKey" name="deepseekKey" />
+      </div>
 
-      <label for="deepseekKey">Deepseek API 密钥：</label>
-      <input type="text" id="deepseekKey" name="deepseekKey" /><br />
+      <div class="section">
+        <div class="section-title">Groq API</div>
+        <label for="groqKey">Groq API 密钥：</label>
+        <input type="text" id="groqKey" name="groqKey" />
+      </div>
 
-      <label for="groqKey">Groq API 密钥：</label>
-      <input type="text" id="groqKey" name="groqKey" /><br />
+      <div class="section">
+        <div class="section-title">Siliconflow API</div>
+        <label for="siliconflowKey">Siliconflow API 密钥：</label>
+        <input type="text" id="siliconflowKey" name="siliconflowKey" />
+      </div>
 
-      <label for="siliconflowKey">Siliconflow API 密钥：</label>
-      <input type="text" id="siliconflowKey" name="siliconflowKey" /><br />
+      <div class="section">
+        <div class="section-title">xAI API</div>
+        <label for="xaiKey">xAI API 密钥：</label>
+        <input type="text" id="xaiKey" name="xaiKey" />
+      </div>
+      
+      <!-- 自定义接口配置 -->
+      <div class="section">
+        <div class="section-title">自定义 OpenAI 兼容接口</div>
+        <label for="customEndpoint">接口地址：</label>
+        <input type="text" id="customEndpoint" name="customEndpoint" placeholder="例如: https://api.example.com" />
+        <div id="urlPreview"></div>
+        
+        <label for="customApiKey">API 密钥：</label>
+        <input type="text" id="customApiKey" name="customApiKey" />
+        
+        <label for="modelSelect">选择模型：</label>
+        <select id="modelSelect">
+          <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+        </select>
+      </div>
 
-      <label for="xaiKey">xAI API 密钥：</label>
-      <input type="text" id="xaiKey" name="xaiKey" /><br />
-
-      <label for="customEndpoint">自定义 OpenAI 兼容接口：</label>
-      <input type="text" id="customEndpoint" name="customEndpoint" placeholder="例如: https://api.example.com" /><br />
-      <div id="urlPreview" style="color: #666; font-size: 0.9em; margin: 5px 0;"></div>
-
-      <label for="customApiKey">自定义接口 API 密钥：</label>
-      <input type="text" id="customApiKey" name="customApiKey" /><br />
-
-      <label for="modelSelect">选择模型：</label>
-      <select id="modelSelect">
-        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-      </select><br />
-
+      <!-- 操作按钮 -->
       <div class="button-group">
         <button type="submit">检测密钥</button>
         <button type="button" id="clearButton">清空输入</button>

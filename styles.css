@@ -151,3 +151,28 @@ select:focus {
 .key-selection div:hover {
   background: #e3f2fd !important;
 }
+
+/* 添加区域划分样式 */
+.section {
+  background: white;
+  padding: 8px;
+  margin: 4px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1a73e8;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #e8f0fe;
+}
+
+/* 调整表单布局 */
+#apiKeyForm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
