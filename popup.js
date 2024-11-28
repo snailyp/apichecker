@@ -10,6 +10,7 @@ document
     const groqKey = document.getElementById("groqKey").value.trim();
     const siliconflowKey = document.getElementById("siliconflowKey").value.trim();
     const customEndpoint = document.getElementById("customEndpoint").value.trim();
+    const xaiKey = document.getElementById("xaiKey").value.trim();
 
     const resultDiv = document.getElementById("result");
     resultDiv.innerHTML = "正在检测，请稍候...";
@@ -228,6 +229,32 @@ document
       }
     }
 
+    // 添加 xAI API 检测
+    if (xaiKey) {
+      try {
+        const xaiResponse = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${xaiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'grok-beta',
+            messages: [{ role: 'user', content: 'Hi' }],
+            max_tokens: 10
+          })
+        });
+        if (xaiResponse.ok) {
+          results.push("✅ xAI API 密钥有效。");
+        } else {
+          const errorData = await xaiResponse.json();
+          results.push(`❌ xAI API 错误：${errorData.error?.message || '未知错误'}`);
+        }
+      } catch (error) {
+        results.push(`❌ xAI API 错误：${error.message}`);
+      }
+    }
+
     // 检测自定义 OpenAI 兼容接口
     if (customEndpoint) {
       try {
@@ -264,7 +291,7 @@ document
     }
 
     // 如果没有输入任何 API 密钥
-    if (!openaiKey && !claudeKey && !geminiKey && !deepseekKey && !groqKey && !siliconflowKey && !customEndpoint) {
+    if (!openaiKey && !claudeKey && !geminiKey && !deepseekKey && !groqKey && !siliconflowKey && !xaiKey && !customEndpoint) {
       results.push("⚠️ 请至少输入一个 API 密钥进行检测。");
     }
 
@@ -282,6 +309,7 @@ document.getElementById("clearButton").addEventListener("click", function() {
   document.getElementById("siliconflowKey").value = "";
   document.getElementById("customEndpoint").value = "";
   document.getElementById("customApiKey").value = "";
+  document.getElementById("xaiKey").value = "";
   document.getElementById("result").innerHTML = "";
   
   // 清空所有密钥选择区域
@@ -378,11 +406,9 @@ const KEY_PATTERNS = {
   claude: /sk-ant-api03-\S{95}/g,
   gemini: /AIzaSy\S{33}/g,
   deepseek: /sk-[a-zA-Z0-9]{32}/g,
-  openai: /sk-[a-zA-Z0-9]{48}/g,
-  openai:/sk-proj-\S{48}/g,
-  openai:/sk-proj-\S{124}/g,
-  openai:/sk-proj-\S{156}/g,
-  groq: /gsk_[a-zA-Z0-9]{52}/g
+  openai: /(sk-[a-zA-Z0-9]{48}|sk-proj-\S{48}|sk-proj-\S{124}|sk-proj-\S{156})/g,
+  groq: /gsk_[a-zA-Z0-9]{52}/g,
+  xai: /xai-[a-zA-Z0-9]{80}/g
 };
 
 // 修改自动填充功能
@@ -415,7 +441,8 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
       'gemini': 'geminiKey',
       'deepseek': 'deepseekKey',
       'groq': 'groqKey',
-      'siliconflow': 'siliconflowKey'
+      'siliconflow': 'siliconflowKey',
+      'xai': 'xaiKey'
     };
 
     // 清除之前的选择区域
@@ -447,7 +474,7 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
             cursor: pointer;
             border-radius: 3px;
           `;
-          keyDiv.textContent = `${key}`;
+          keyDiv.textContent = `${key.slice(0, 30)}...`;
           keyDiv.title = key;
           
           keyDiv.addEventListener('click', () => {
