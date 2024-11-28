@@ -267,27 +267,80 @@ document
           ? customEndpoint 
           : customEndpoint + '/v1/';
         
-        const customResponse = await fetch(`${processedEndpoint}chat/completions`, {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${customApiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: [{ role: 'user', content: 'Hi' }],
-            max_tokens: 10
+        // 并行发送请求：API 可用性检测、额度查询和使用情况查询
+        const [completionResponse, quotaResponse, usageResponse] = await Promise.all([
+          // 原有的 API 可用性检测
+          fetch(`${processedEndpoint}chat/completions`, {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${customApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: selectedModel,
+              messages: [{ role: 'user', content: 'Hi' }],
+              max_tokens: 10
+            })
+          }),
+          // 额度查询
+          fetch(`${customEndpoint}/dashboard/billing/subscription`, {
+            headers: { 
+              'Authorization': `Bearer ${customApiKey}`
+            }
+          }),
+          // 使用情况查询
+          fetch(`${customEndpoint}/dashboard/billing/usage?start_date=${getStartDate()}&end_date=${getEndDate()}`, {
+            headers: { 
+              'Authorization': `Bearer ${customApiKey}`
+            }
           })
-        });
-        if (customResponse.ok) {
+        ]);
+
+        if (completionResponse.ok) {
           results.push("✅ 自定义 OpenAI 兼容接口可用。");
+
+          // 处理额度信息
+          if (quotaResponse.ok && usageResponse.ok) {
+            const quotaData = await quotaResponse.json();
+            const usageData = await usageResponse.json();
+
+            const quotaInfo = quotaData.hard_limit_usd ? `${quotaData.hard_limit_usd.toFixed(2)} $` : '无法获取';
+            const usedInfo = `${(usageData.total_usage / 100).toFixed(2)} $`;
+            const remainInfo = quotaData.hard_limit_usd 
+              ? `${(quotaData.hard_limit_usd - usageData.total_usage / 100).toFixed(2)} $`
+              : '无法计算';
+
+            results.push(
+              `💰 额度信息：`,
+              `- 总额度：${quotaInfo}`,
+              `- 已用额度：${usedInfo}`,
+              `- 剩余额度：${remainInfo}`
+            );
+          }
         } else {
-          const errorData = await customResponse.json();
+          const errorData = await completionResponse.json();
           results.push(`❌ 自定义接口错误：${errorData.error?.message || '未知错误'}`);
         }
       } catch (error) {
         results.push(`❌ 自定义接口错误：${error.message}`);
       }
+    }
+
+    // 辅助函数：获取当月开始日期
+    function getStartDate() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      return `${year}-${month}-01`;
+    }
+
+    // 辅助函数：获取当前日期
+    function getEndDate() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
 
     // 如果没有输入任何 API 密钥
