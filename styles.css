@@ -479,3 +479,58 @@ html {
     right: 10px;
   }
 }
+
+.history-header-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.copy-key-btn {
+  background-color: #4caf50;
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  height: auto;
+  width: auto;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.copy-key-btn:hover {
+  background-color: #45a049;
+}
+
+#copyAllKeysBtn {
+  background-color: #4caf50;
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  height: auto;
+  width: auto;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+#copyAllKeysBtn:hover {
+  background-color: #45a049;
+}
+
+/* 确保历史记录操作按钮对齐 */
+.history-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* 调整历史记录头部按钮样式 */
+.history-header-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}

@@ -778,14 +778,66 @@ document
         .join("");
 
       resultDiv.innerHTML = `
-      <div class="history-container">
-        <div class="history-header">
-          <h3>历史有效密钥</h3>
-          <button id="clearHistoryBtn">清空历史</button>
-        </div>
-        ${historyHtml}
-      </div>
-    `;
+            <div class="history-container">
+                <div class="history-header">
+                    <h3>历史有效密钥</h3>
+                    <div class="history-header-buttons">
+                        <button id="copyAllKeysBtn" title="复制所有密钥">复制全部</button>
+                        <button id="clearHistoryBtn">清空历史</button>
+                    </div>
+                </div>
+                ${historyHtml}
+            </div>
+        `;
+
+      // 添加复制单个密钥的按钮事件
+      document.querySelectorAll(".history-item").forEach((item) => {
+        const key = item.dataset.key;
+        const platform = item.dataset.platform;
+        const endpoint = item.dataset.endpoint;
+
+        const actionsDiv = item.querySelector(".history-actions");
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "copy-key-btn";
+        copyBtn.textContent = "复制";
+        copyBtn.title = "复制密钥";
+
+        copyBtn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(key);
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = "已复制!";
+            setTimeout(() => (copyBtn.textContent = originalText), 1000);
+          } catch (err) {
+            console.error("复制失败:", err);
+          }
+        });
+
+        actionsDiv.insertBefore(copyBtn, actionsDiv.firstChild);
+      });
+
+      // 添加复制所有密钥的功能
+      document
+        .getElementById("copyAllKeysBtn")
+        .addEventListener("click", async function () {
+          try {
+            const keysText = validKeys
+              .map((item) => {
+                let text = `${item.platform}: ${item.key}`;
+                if (item.endpoint) {
+                  text += `\nEndpoint: ${item.endpoint}`;
+                }
+                return text;
+              })
+              .join("\n\n");
+
+            await navigator.clipboard.writeText(keysText);
+            this.textContent = "已复制!";
+            setTimeout(() => (this.textContent = "复制全部"), 1000);
+          } catch (err) {
+            console.error("复制失败:", err);
+          }
+        });
 
       // 添加使用按钮的点击事件
       document.querySelectorAll(".use-key-btn").forEach((btn) => {
