@@ -293,3 +293,113 @@ html {
       font-size: 16px;
     }
   }
+
+  /* 修改历史记录容器样式 */
+.history-container {
+    margin-top: 20px;
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .history-container h3 {
+    margin: 0 0 16px 0;
+    color: #1a73e8;
+  }
+  
+  .history-item {
+    display: grid;
+    grid-template-columns: 100px 1fr 150px auto;
+    gap: 12px;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .history-item:last-child {
+    border-bottom: none;
+  }
+  
+  .history-platform {
+    font-weight: 500;
+    color: #1a73e8;
+  }
+  
+  .history-key {
+    font-family: monospace;
+    color: #666;
+  }
+  
+  .history-time {
+    color: #888;
+    font-size: 12px;
+  }
+  
+  .use-key-btn {
+    margin: 0;
+    padding: 4px 8px;
+    font-size: 12px;
+    height: auto;
+    width: auto;
+  }
+  
+  #historyButton {
+    background-color: #4CAF50;
+  }
+  
+  #historyButton:hover {
+    background-color: #45a049;
+  }
+
+  /* 修改历史记录容器样式 */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.history-header h3 {
+  margin: 0;
+}
+
+#clearHistoryBtn {
+  background-color: #dc3545;
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  height: auto;
+  width: auto;
+}
+
+#clearHistoryBtn:hover {
+  background-color: #bb2d3b;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: 100px 1fr 150px auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.history-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.delete-key-btn {
+  background-color: #dc3545;
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  height: auto;
+  width: auto;
+}
+
+.delete-key-btn:hover {
+  background-color: #bb2d3b;
+}

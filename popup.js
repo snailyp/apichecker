@@ -34,6 +34,7 @@ document
         });
         if (openaiResponse.ok) {
           results.push("✅ OpenAI API 密钥有效。");
+          await saveValidKey('openai', openaiKey);
         } else {
           const errorData = await openaiResponse.json();
           results.push(`❌ OpenAI API 错误：${errorData.error?.message || '未知错误'}`);
@@ -62,6 +63,7 @@ document
         });
         if (claudeResponse.ok) {
           results.push("✅ Claude API 密钥有效。");
+          await saveValidKey('claude', claudeKey);
         } else {
           const errorData = await claudeResponse.json();
           results.push(`❌ Claude API 错误：${errorData.error?.message || '未知错误'}`);
@@ -87,6 +89,7 @@ document
         });
         if (geminiResponse.ok) {
           results.push("✅ Gemini API 密钥有效。");
+          await saveValidKey('gemini', geminiKey);
         } else {
           const errorData = await geminiResponse.json();
           results.push(`❌ Gemini API 错误：${errorData.error?.message || '未知错误'}`);
@@ -133,6 +136,7 @@ document
             `- 赠送余额：${balanceInfo.granted_balance} ${balanceInfo.currency}`,
             `- 充值余额：${balanceInfo.topped_up_balance} ${balanceInfo.currency}`
           );
+          await saveValidKey('deepseek', deepseekKey);
         } else {
           if (!completionResponse.ok) {
             const errorData = await completionResponse.json();
@@ -165,6 +169,7 @@ document
         });
         if (groqResponse.ok) {
           results.push("✅ Groq API 密钥有效。");
+          await saveValidKey('groq', groqKey);
         } else {
           const errorData = await groqResponse.json();
           results.push(`❌ Groq API 错误：${errorData.error?.message || '未知错误'}`);
@@ -211,6 +216,7 @@ document
               `- 充值余额：${data.chargeBalance} CNY`,
               `- 赠送余额：${data.balance} CNY`
             );
+            await saveValidKey('siliconflow', siliconflowKey);
           } else {
             results.push(`❌ Siliconflow 用户信息查询失败：${userInfo.message}`);
           }
@@ -246,6 +252,7 @@ document
         });
         if (xaiResponse.ok) {
           results.push("✅ xAI API 密钥有效。");
+          await saveValidKey('xai', xaiKey);
         } else {
           const errorData = await xaiResponse.json();
           results.push(`❌ xAI API 错误：${errorData.error?.message || '未知错误'}`);
@@ -298,6 +305,7 @@ document
 
         if (completionResponse.ok) {
           results.push("✅ 自定义 OpenAI 兼容接口可用。");
+          await saveValidKey('custom', customApiKey, customEndpoint);
 
           // 处理额度信息
           if (quotaResponse.ok && usageResponse.ok) {
@@ -597,3 +605,136 @@ document.getElementById('scrollTopBtn').addEventListener('click', () => {
   
   // 初始化滚动按钮状态
   toggleScrollButtons();
+
+// 添加保存有效key的函数
+async function saveValidKey(platform, key, endpoint = '') {
+  try {
+    const history = await chrome.storage.local.get('validKeys') || { validKeys: [] };
+    const validKeys = history.validKeys || [];
+    
+    // 检查是否已存在相同的key
+    const existingIndex = validKeys.findIndex(item => item.key === key);
+    
+    const newEntry = {
+      platform,
+      key,
+      endpoint,
+      timestamp: new Date().toISOString()
+    };
+
+    if (existingIndex >= 0) {
+      // 更新现有记录的时间戳
+      validKeys[existingIndex].timestamp = newEntry.timestamp;
+    } else {
+      // 添加新记录
+      validKeys.push(newEntry);
+    }
+
+    // 按时间戳降序排序
+    validKeys.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    // 限制历史记录数量为20条
+    const trimmedKeys = validKeys.slice(0, 20);
+    
+    await chrome.storage.local.set({ validKeys: trimmedKeys });
+  } catch (error) {
+    console.error('保存历史记录失败:', error);
+  }
+}
+
+// 修改查看历史记录的功能
+document.getElementById('historyButton').addEventListener('click', async function() {
+  const resultDiv = document.getElementById('result');
+  try {
+    const history = await chrome.storage.local.get('validKeys');
+    const validKeys = history.validKeys || [];
+    
+    if (validKeys.length === 0) {
+      resultDiv.innerHTML = '暂无历史记录';
+      return;
+    }
+
+    const platformNames = {
+      openai: 'OpenAI',
+      claude: 'Claude',
+      gemini: 'Gemini',
+      deepseek: 'Deepseek',
+      groq: 'Groq',
+      siliconflow: 'Siliconflow',
+      xai: 'xAI',
+      custom: '自定义接口'
+    };
+
+    const historyHtml = validKeys.map((item, index) => {
+      const date = new Date(item.timestamp).toLocaleString('zh-CN');
+      const keyPreview = `${item.key.slice(0, 8)}...${item.key.slice(-8)}`;
+      const platformName = platformNames[item.platform] || item.platform;
+      
+      return `
+        <div class="history-item" data-key="${item.key}" data-platform="${item.platform}" ${item.endpoint ? `data-endpoint="${item.endpoint}"` : ''}>
+          <div class="history-platform">${platformName}</div>
+          <div class="history-key">${keyPreview}</div>
+          <div class="history-time">${date}</div>
+          <div class="history-actions">
+            <button class="use-key-btn">使用</button>
+            <button class="delete-key-btn" data-index="${index}">删除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    resultDiv.innerHTML = `
+      <div class="history-container">
+        <div class="history-header">
+          <h3>历史有效密钥</h3>
+          <button id="clearHistoryBtn">清空历史</button>
+        </div>
+        ${historyHtml}
+      </div>
+    `;
+
+    // 添加使用按钮的点击事件
+    document.querySelectorAll('.use-key-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const item = this.closest('.history-item');
+        const key = item.dataset.key;
+        const platform = item.dataset.platform;
+        const endpoint = item.dataset.endpoint;
+
+        // 填充对应的输入框
+        if (platform === 'custom') {
+          document.getElementById('customApiKey').value = key;
+          document.getElementById('customEndpoint').value = endpoint;
+        } else {
+          document.getElementById(`${platform}Key`).value = key;
+        }
+      });
+    });
+
+    // 添加删除按钮的点击事件
+    document.querySelectorAll('.delete-key-btn').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const index = parseInt(this.dataset.index);
+        const history = await chrome.storage.local.get('validKeys');
+        const validKeys = history.validKeys || [];
+        
+        validKeys.splice(index, 1);
+        await chrome.storage.local.set({ validKeys });
+        
+        // 重新加载历史记录
+        document.getElementById('historyButton').click();
+      });
+    });
+
+    // 添加清空历史的点击事件
+    document.getElementById('clearHistoryBtn').addEventListener('click', async function() {
+      if (confirm('确定要清空所有历史记录吗？')) {
+        await chrome.storage.local.set({ validKeys: [] });
+        resultDiv.innerHTML = '暂无历史记录';
+      }
+    });
+
+  } catch (error) {
+    resultDiv.innerHTML = `获取历史记录失败：${error.message}`;
+  }
+});
