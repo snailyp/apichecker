@@ -1,6 +1,4 @@
-document
-  .getElementById("apiKeyForm")
-  .addEventListener("submit", async function (e) {
+document.getElementById("checkButton").addEventListener("click", async function() {
     e.preventDefault();
 
     const openaiKey = document.getElementById("openaiKey").value.trim();
@@ -737,4 +735,9 @@ document.getElementById('historyButton').addEventListener('click', async functio
   } catch (error) {
     resultDiv.innerHTML = `获取历史记录失败：${error.message}`;
   }
+});
+
+// 移除原来的表单提交事件监听
+document.getElementById("apiKeyForm").addEventListener("submit", function(e) {
+  e.preventDefault(); // 防止表单提交
 });

@@ -264,7 +264,7 @@ html {
     height: 36px;
     padding: 0;
     border-radius: 50%;
-    background-color: rgba(26, 115, 232, 0.8);
+    background-color: rgba(26, 115, 232, 0.6);
     color: white;
     font-size: 18px;
     cursor: pointer;
@@ -272,11 +272,12 @@ html {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    backdrop-filter: blur(4px);
   }
   
   .scroll-buttons button:hover {
-    background-color: rgba(26, 115, 232, 1);
+    background-color: rgba(26, 115, 232, 0.8);
     transform: translateY(-2px);
   }
   
@@ -402,4 +403,79 @@ html {
 
 .delete-key-btn:hover {
   background-color: #bb2d3b;
+}
+
+/* 修改按钮组样式 */
+.action-buttons {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1000;
+}
+
+.action-buttons button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin: 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  backdrop-filter: blur(4px);
+  transition: all 0.2s;
+}
+
+.action-buttons button:hover {
+  transform: translateY(-2px);
+}
+
+/* 为每个按钮设置不同的颜色 */
+#checkButton {
+  background-color: rgba(26, 115, 232, 0.6);
+}
+
+#clearButton {
+  background-color: rgba(220, 53, 69, 0.6);
+}
+
+#autoFillButton {
+  background-color: rgba(40, 167, 69, 0.6);
+}
+
+#historyButton {
+  background-color: rgba(108, 117, 125, 0.6);
+}
+
+/* 添加按钮提示文字 */
+.action-buttons button::before {
+  content: attr(title);
+  position: absolute;
+  right: 50px;
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.8);
+  color: white;
+  font-size: 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.action-buttons button:hover::before {
+  opacity: 1;
+}
+
+/* 在小屏幕上调整位置 */
+@media (max-width: 768px) {
+  .action-buttons {
+    right: 10px;
+  }
 }
