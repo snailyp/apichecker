@@ -428,7 +428,7 @@ document
     resultDiv.innerHTML = results.join("<br />");
   });
 
-// 修改清空按钮功能
+// 清空按钮功能
 document.getElementById("clearButton").addEventListener("click", function () {
   // 清空所有输入框
   document.getElementById("openaiKey").value = "";
@@ -440,7 +440,14 @@ document.getElementById("clearButton").addEventListener("click", function () {
   document.getElementById("customEndpoint").value = "";
   document.getElementById("customApiKey").value = "";
   document.getElementById("xaiKey").value = "";
-  document.getElementById("result").innerHTML = "";
+  
+  // 保存当前历史记录区域的内容
+  const historyContainer = document.querySelector('.history-container');
+  const historyContent = historyContainer ? historyContainer.outerHTML : '';
+  
+  // 清空结果显示区域，但保留历史记录
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = historyContent;
 
   // 清空所有密钥选择区域
   document.querySelectorAll(".key-selection").forEach((el) => el.remove());
@@ -764,7 +771,7 @@ async function saveValidKey(platform, key, endpoint = "") {
     validKeys.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     // 限制历史记录数量为20条
-    const trimmedKeys = validKeys.slice(0, 20);
+    const trimmedKeys = validKeys.slice(0, 100);
 
     await chrome.storage.local.set({ validKeys: trimmedKeys });
   } catch (error) {
@@ -772,10 +779,19 @@ async function saveValidKey(platform, key, endpoint = "") {
   }
 }
 
-// 修改查看历史记录的功能
+// 修改历史记录按钮的点击事件处理
 document.getElementById("historyButton").addEventListener("click", async function () {
   const resultDiv = document.getElementById("result");
-  const ITEMS_PER_PAGE = 5; // 每页显示5条记录
+  
+  // 检查是否已经显示历史记录
+  const existingHistory = resultDiv.querySelector('.history-container');
+  if (existingHistory) {
+    // 如果已经显示，则隐藏
+    resultDiv.innerHTML = '';
+    return;
+  }
+  
+  const ITEMS_PER_PAGE = 5;
   let currentPage = 1;
   
   try {
