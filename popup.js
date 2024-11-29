@@ -923,7 +923,7 @@ document.getElementById("historyButton").addEventListener("click", async functio
           const platform = item.dataset.platform;
           const endpoint = item.dataset.endpoint;
 
-          // 填��对应的输入��
+          // 填对应的输入框
           if (platform === "custom") {
             document.getElementById("customApiKey").value = key;
             document.getElementById("customEndpoint").value = endpoint;
@@ -967,4 +967,27 @@ document.getElementById("historyButton").addEventListener("click", async functio
   } catch (error) {
     resultDiv.innerHTML = `获取历史记录失败：${error.message}`;
   }
+});
+
+// 添加导航菜单控制逻辑
+document.addEventListener('DOMContentLoaded', function() {
+  const navLinks = document.querySelectorAll('.nav-menu a');
+  
+  navLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // 切换当前链接的激活状态
+      this.classList.toggle('active');
+      
+      // 获取目标区域的ID
+      const targetId = this.getAttribute('href').substring(1);
+      const targetSection = document.getElementById(targetId);
+      
+      // 切换目标区域的显示状态
+      if (targetSection) {
+        targetSection.classList.toggle('active');
+      }
+    });
+  });
 });

@@ -159,6 +159,11 @@ select:focus {
   margin: 4px 0;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: none;
+}
+
+.section.active {
+  display: block;
 }
 
 .section-title {
@@ -232,10 +237,17 @@ select:focus {
   text-decoration: none;
   font-size: 13px;
   transition: background-color 0.2s;
+  position: relative;
+  background-color: transparent;
 }
 
 .nav-menu a:hover {
   background-color: #e8f0fe;
+}
+
+.nav-menu a.active {
+  background-color: #e8f0fe;
+  font-weight: 500;
 }
 
 /* 添加平滑滚动效果 */
