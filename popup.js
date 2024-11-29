@@ -394,7 +394,7 @@ document
       }
     }
 
-    // 辅助函数：获取当月开始日期
+    // 辅助函数：获当月开始日期
     function getStartDate() {
       const today = new Date();
       const year = today.getFullYear();
@@ -444,17 +444,24 @@ document.getElementById("clearButton").addEventListener("click", function () {
 
   // 清空所有密钥选择区域
   document.querySelectorAll(".key-selection").forEach((el) => el.remove());
+  
+  // 清空模型下拉列表
+  const modelSelect = document.getElementById("modelSelect");
+  modelSelect.innerHTML = '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+  
+  // 清空模型复选框区域
+  const modelCheckboxes = document.getElementById("modelCheckboxes");
+  modelCheckboxes.innerHTML = "";
 });
 
-// 获取模型列表的函数
+// 修改 fetchModels 函数
 async function fetchModels(endpoint, apiKey) {
   const modelSelect = document.getElementById("modelSelect");
+  const modelCheckboxes = document.getElementById("modelCheckboxes");
   const resultDiv = document.getElementById("result");
 
-  // 处理 endpoint 的结尾���
-  const processedEndpoint = endpoint.endsWith("/")
-    ? endpoint
-    : endpoint + "/v1/";
+  // 处理 endpoint 的结尾斜杠
+  const processedEndpoint = endpoint.endsWith("/") ? endpoint : endpoint + "/v1/";
 
   try {
     const response = await fetch(`${processedEndpoint}models`, {
@@ -471,29 +478,68 @@ async function fetchModels(endpoint, apiKey) {
     const data = await response.json();
     const models = data.data || [];
 
+    // 清空现有选项
     modelSelect.innerHTML = "";
+    modelCheckboxes.innerHTML = "";
 
     if (models.length > 0) {
+      // 添加下拉选项
       models.forEach((model) => {
         const option = document.createElement("option");
         option.value = model.id;
         option.textContent = model.id;
         modelSelect.appendChild(option);
+        
+        // 添加复选框
+        const checkboxDiv = document.createElement("div");
+        checkboxDiv.className = "model-checkbox-item";
+        
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = `model-${model.id}`;
+        checkbox.value = model.id;
+        
+        const label = document.createElement("label");
+        label.htmlFor = `model-${model.id}`;
+        label.textContent = model.id;
+        
+        checkboxDiv.appendChild(checkbox);
+        checkboxDiv.appendChild(label);
+        modelCheckboxes.appendChild(checkboxDiv);
       });
+      
       resultDiv.innerHTML = "✅ 成功获取模型列表";
     } else {
-      modelSelect.innerHTML =
-        '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+      modelSelect.innerHTML = '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
       throw new Error("未找到可用模型");
     }
   } catch (error) {
     console.error("获取模型列表错误:", error);
-    modelSelect.innerHTML =
-      '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+    modelSelect.innerHTML = '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
     resultDiv.innerHTML = `❌ 获取模型列表失败：${error.message}`;
     return [];
   }
 }
+
+// 添加复制模型按钮的事件监听
+document.getElementById("copyModelsBtn").addEventListener("click", async function() {
+  const checkboxes = document.querySelectorAll("#modelCheckboxes input[type='checkbox']:checked");
+  if (checkboxes.length === 0) {
+    document.getElementById("result").innerHTML = "⚠️ 请先选择要复制的模型";
+    return;
+  }
+  
+  const selectedModels = Array.from(checkboxes).map(cb => cb.value);
+  const modelText = selectedModels.join(",");
+  
+  try {
+    await navigator.clipboard.writeText(modelText);
+    this.textContent = "已复制!";
+    setTimeout(() => this.textContent = "复制选中模型", 1000);
+  } catch (err) {
+    document.getElementById("result").innerHTML = "❌ 复制失败：" + err.message;
+  }
+});
 
 // 处理模型列表更新的函数
 function handleModelListUpdate() {
@@ -877,7 +923,7 @@ document.getElementById("historyButton").addEventListener("click", async functio
           const platform = item.dataset.platform;
           const endpoint = item.dataset.endpoint;
 
-          // 填充对应的输入框
+          // 填��对应的输入��
           if (platform === "custom") {
             document.getElementById("customApiKey").value = key;
             document.getElementById("customEndpoint").value = endpoint;

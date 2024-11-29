@@ -570,3 +570,68 @@ html {
   color: #999;
   cursor: not-allowed;
 }
+
+/* 添加模型复选框区域样式 */
+.model-checkboxes {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 10px 0;
+  padding: 8px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.model-checkbox-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.model-checkbox-item input[type="checkbox"] {
+  margin-right: 8px;
+  width: auto;
+}
+
+.model-checkbox-item label {
+  margin: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.copy-models-btn {
+  background-color: #4caf50;
+  margin-top: 10px;
+}
+
+.copy-models-btn:hover {
+  background-color: #45a049;
+}
+
+/* 美化复选框样式 */
+.model-checkbox-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #1a73e8;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.model-checkbox-item input[type="checkbox"]:checked {
+  background-color: #1a73e8;
+}
+
+.model-checkbox-item input[type="checkbox"]:checked::after {
+  content: "✓";
+  color: white;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+}
