@@ -451,7 +451,7 @@ async function fetchModels(endpoint, apiKey) {
   const modelSelect = document.getElementById("modelSelect");
   const resultDiv = document.getElementById("result");
 
-  // 处理 endpoint 的结尾斜杠
+  // 处理 endpoint 的结尾���
   const processedEndpoint = endpoint.endsWith("/")
     ? endpoint
     : endpoint + "/v1/";
@@ -672,26 +672,6 @@ document.getElementById("scrollBottomBtn").addEventListener("click", () => {
   });
 });
 
-// 控制滚动按钮的显示和隐藏
-function toggleScrollButtons() {
-  const scrollButtons = document.querySelector(".scroll-buttons");
-  const scrollThreshold = 200; // 显示按钮的滚动阈值
-
-  if (window.scrollY > scrollThreshold) {
-    scrollButtons.style.opacity = "1";
-    scrollButtons.style.pointerEvents = "auto";
-  } else {
-    scrollButtons.style.opacity = "0";
-    scrollButtons.style.pointerEvents = "none";
-  }
-}
-
-// 添加滚动事件监听
-window.addEventListener("scroll", toggleScrollButtons);
-
-// 初始化滚动按钮状态
-toggleScrollButtons();
-
 // 添加保存有效key的函数
 async function saveValidKey(platform, key, endpoint = "") {
   try {
@@ -731,18 +711,25 @@ async function saveValidKey(platform, key, endpoint = "") {
 }
 
 // 修改查看历史记录的功能
-document
-  .getElementById("historyButton")
-  .addEventListener("click", async function () {
-    const resultDiv = document.getElementById("result");
-    try {
-      const history = await chrome.storage.local.get("validKeys");
-      const validKeys = history.validKeys || [];
+document.getElementById("historyButton").addEventListener("click", async function () {
+  const resultDiv = document.getElementById("result");
+  const ITEMS_PER_PAGE = 5; // 每页显示5条记录
+  let currentPage = 1;
+  
+  try {
+    const history = await chrome.storage.local.get("validKeys");
+    const validKeys = history.validKeys || [];
 
-      if (validKeys.length === 0) {
-        resultDiv.innerHTML = "暂无历史记录";
-        return;
-      }
+    if (validKeys.length === 0) {
+      resultDiv.innerHTML = "暂无历史记录";
+      return;
+    }
+
+    function renderPage(page) {
+      const startIndex = (page - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      const pageItems = validKeys.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(validKeys.length / ITEMS_PER_PAGE);
 
       const platformNames = {
         openai: "OpenAI",
@@ -755,40 +742,79 @@ document
         custom: "自定义接口",
       };
 
-      const historyHtml = validKeys
+      const historyHtml = pageItems
         .map((item, index) => {
           const date = new Date(item.timestamp).toLocaleString("zh-CN");
           const keyPreview = `${item.key.slice(0, 8)}...${item.key.slice(-8)}`;
           const platformName = platformNames[item.platform] || item.platform;
+          const absoluteIndex = startIndex + index;
 
           return `
-        <div class="history-item" data-key="${item.key}" data-platform="${
-            item.platform
-          }" ${item.endpoint ? `data-endpoint="${item.endpoint}"` : ""}>
-          <div class="history-platform">${platformName}</div>
-          <div class="history-key">${keyPreview}</div>
-          <div class="history-time">${date}</div>
-          <div class="history-actions">
-            <button class="use-key-btn">使用</button>
-            <button class="delete-key-btn" data-index="${index}">删除</button>
-          </div>
-        </div>
-      `;
+            <div class="history-item" data-key="${item.key}" data-platform="${item.platform}" ${
+            item.endpoint ? `data-endpoint="${item.endpoint}"` : ""
+          }>
+              <div class="history-platform">${platformName}</div>
+              <div class="history-key">${keyPreview}</div>
+              <div class="history-time">${date}</div>
+              <div class="history-actions">
+                <button class="copy-key-btn">复制</button>
+                <button class="use-key-btn">使用</button>
+                <button class="delete-key-btn" data-index="${absoluteIndex}">删除</button>
+              </div>
+            </div>
+          `;
         })
         .join("");
 
+      // 生成分页按钮
+      const paginationHtml = `
+        <div class="pagination">
+          <button ${page === 1 ? 'disabled' : ''} id="prevPage">上一页</button>
+          ${Array.from({ length: totalPages }, (_, i) => i + 1)
+            .map(
+              (num) =>
+                `<button class="${num === page ? 'active' : ''}" data-page="${num}">${num}</button>`
+            )
+            .join('')}
+          <button ${page === totalPages ? 'disabled' : ''} id="nextPage">下一页</button>
+        </div>
+      `;
+
       resultDiv.innerHTML = `
-            <div class="history-container">
-                <div class="history-header">
-                    <h3>历史有效密钥</h3>
-                    <div class="history-header-buttons">
-                        <button id="copyAllKeysBtn" title="复制所有密钥">复制全部</button>
-                        <button id="clearHistoryBtn">清空历史</button>
-                    </div>
-                </div>
-                ${historyHtml}
+        <div class="history-container">
+          <div class="history-header">
+            <h3>历史有效密钥</h3>
+            <div class="history-header-buttons">
+              <button id="copyAllKeysBtn" title="复制所有密钥">复制全部</button>
+              <button id="clearHistoryBtn">清空历史</button>
             </div>
-        `;
+          </div>
+          ${historyHtml}
+          ${paginationHtml}
+        </div>
+      `;
+
+      // 添加分页事件监听
+      document.querySelectorAll('.pagination button[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentPage = parseInt(btn.dataset.page);
+          renderPage(currentPage);
+        });
+      });
+
+      document.getElementById('prevPage')?.addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderPage(currentPage);
+        }
+      });
+
+      document.getElementById('nextPage')?.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderPage(currentPage);
+        }
+      });
 
       // 添加复制单个密钥的按钮事件
       document.querySelectorAll(".history-item").forEach((item) => {
@@ -797,14 +823,18 @@ document
         const endpoint = item.dataset.endpoint;
 
         const actionsDiv = item.querySelector(".history-actions");
-        const copyBtn = document.createElement("button");
-        copyBtn.className = "copy-key-btn";
-        copyBtn.textContent = "复制";
-        copyBtn.title = "复制密钥";
+        const copyBtn = actionsDiv.querySelector(".copy-key-btn");
+      
 
         copyBtn.addEventListener("click", async () => {
           try {
-            await navigator.clipboard.writeText(key);
+            // 构建包含平台信息和endpoint的复制文本
+            let copyText = `Platform: ${platform}\nKey: ${key}`;
+            if (endpoint) {
+              copyText += `\nEndpoint: ${endpoint}`;
+            }
+            
+            await navigator.clipboard.writeText(copyText);
             const originalText = copyBtn.textContent;
             copyBtn.textContent = "已复制!";
             setTimeout(() => (copyBtn.textContent = originalText), 1000);
@@ -883,7 +913,12 @@ document
             resultDiv.innerHTML = "暂无历史记录";
           }
         });
-    } catch (error) {
-      resultDiv.innerHTML = `获取历史记录失败：${error.message}`;
     }
-  });
+
+    // 初始渲染第一页
+    renderPage(currentPage);
+    
+  } catch (error) {
+    resultDiv.innerHTML = `获取历史记录失败：${error.message}`;
+  }
+});

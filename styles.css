@@ -257,6 +257,8 @@ html {
   flex-direction: column;
   gap: 8px;
   z-index: 1000;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .scroll-buttons button {
@@ -264,7 +266,7 @@ html {
   height: 36px;
   padding: 0;
   border-radius: 50%;
-  background-color: rgba(26, 115, 232, 0.6);
+  background-color: #1a73e8;
   color: white;
   font-size: 18px;
   cursor: pointer;
@@ -272,13 +274,13 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .scroll-buttons button:hover {
-  background-color: rgba(26, 115, 232, 0.8);
+  background-color: #1557b0;
   transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* 在小屏幕上调整按钮位置 */
@@ -302,6 +304,7 @@ html {
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
 }
 
 .history-container h3 {
@@ -311,11 +314,12 @@ html {
 
 .history-item {
   display: grid;
-  grid-template-columns: 100px 1fr 150px auto;
-  gap: 12px;
+  grid-template-columns: minmax(80px, auto) minmax(120px, 1fr) minmax(120px, auto) minmax(160px, auto);
+  gap: 8px;
   align-items: center;
   padding: 8px;
   border-bottom: 1px solid #eee;
+  min-width: 600px;
 }
 
 .history-item:last-child {
@@ -533,4 +537,36 @@ html {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+/* 添加分页容器样式 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.pagination button {
+  margin: 0;
+  padding: 4px 12px;
+  font-size: 12px;
+  height: auto;
+  width: auto;
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.pagination button.active {
+  background-color: #1a73e8;
+  color: white;
+}
+
+.pagination button:disabled {
+  background-color: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
 }
