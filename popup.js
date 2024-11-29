@@ -454,7 +454,7 @@ document.getElementById("clearButton").addEventListener("click", function () {
   modelCheckboxes.innerHTML = "";
 });
 
-// 修改 fetchModels 函数
+// 修改 fetchModels 函数，在添加复选框后添加全选/取消全选功能
 async function fetchModels(endpoint, apiKey) {
   const modelSelect = document.getElementById("modelSelect");
   const modelCheckboxes = document.getElementById("modelCheckboxes");
@@ -480,10 +480,15 @@ async function fetchModels(endpoint, apiKey) {
 
     // 清空现有选项
     modelSelect.innerHTML = "";
-    modelCheckboxes.innerHTML = "";
+    modelCheckboxes.innerHTML = `
+      <div class="model-select-all">
+        <button type="button" id="selectAllModels">全选</button>
+        <button type="button" id="deselectAllModels">取消全选</button>
+      </div>
+    `;
 
     if (models.length > 0) {
-      // 添加下拉选项
+      // 添加下拉选项和复选框
       models.forEach((model) => {
         const option = document.createElement("option");
         option.value = model.id;
@@ -506,6 +511,17 @@ async function fetchModels(endpoint, apiKey) {
         checkboxDiv.appendChild(checkbox);
         checkboxDiv.appendChild(label);
         modelCheckboxes.appendChild(checkboxDiv);
+      });
+      
+      // 添加全选/取消全选功能
+      document.getElementById("selectAllModels").addEventListener("click", () => {
+        const checkboxes = modelCheckboxes.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => checkbox.checked = true);
+      });
+
+      document.getElementById("deselectAllModels").addEventListener("click", () => {
+        const checkboxes = modelCheckboxes.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => checkbox.checked = false);
       });
       
       resultDiv.innerHTML = "✅ 成功获取模型列表";
