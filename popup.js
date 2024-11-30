@@ -473,6 +473,14 @@ async function fetchModels(endpoint, apiKey) {
   const modelCheckboxes = document.getElementById("modelCheckboxes");
   const resultDiv = document.getElementById("result");
 
+  // 添加加载动画
+  modelCheckboxes.innerHTML = `
+    <div class="loading-animation">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在获取模型列表...</div>
+    </div>
+  `;
+  
   // 处理 endpoint 的结尾斜杠
   const processedEndpoint = endpoint.endsWith("/") ? endpoint : endpoint + "/v1/";
 
