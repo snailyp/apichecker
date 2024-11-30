@@ -451,6 +451,9 @@ document.getElementById("clearButton").addEventListener("click", function () {
 
   // 清空所有密钥选择区域
   document.querySelectorAll(".key-selection").forEach((el) => el.remove());
+
+  // 清空URL选择区域
+  document.querySelectorAll(".url-selection").forEach((el) => el.remove());
   
   // 清空模型下拉列表
   const modelSelect = document.getElementById("modelSelect");
@@ -621,110 +624,220 @@ const KEY_PATTERNS = {
   custom: /sk-[a-zA-Z0-9]+/g,
 };
 
-// 修改自动识别功能
-document
-  .getElementById("autoFillButton")
-  .addEventListener("click", async function () {
-    const resultDiv = document.getElementById("result");
-    resultDiv.innerHTML = "正在搜索 API 密钥...";
+// 添加 URL 匹配的正则表达式
+const URL_PATTERN = /https?:\/\/[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*(?::\d+)?(?=\/|$)/g;
 
-    try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-      const [{ result }] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => document.documentElement.innerText,
-      });
+document.getElementById("autoFillButton").addEventListener("click", async function () {
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = "正在搜索 API 密钥和接口地址...";
 
-      // 存储找到的所有密钥
-      const foundKeys = {};
+  try {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        // 只获取 body 内的文本内容
+        const bodyText = document.body.innerText;
+        return {
+          text: document.documentElement.innerText,
+          bodyText: bodyText
+        };
+      },
+    });
 
-      // 搜索所有类型的密钥
-      for (const [platform, pattern] of Object.entries(KEY_PATTERNS)) {
-        const matches = [...new Set(result.match(pattern) || [])]; // 使用 Set 去重
-        if (matches.length > 0) {
-          foundKeys[platform] = matches;
-        }
+    // 存储找到的所有密钥
+    const foundKeys = {};
+
+    // 搜索所有类型的密钥
+    for (const [platform, pattern] of Object.entries(KEY_PATTERNS)) {
+      const matches = [...new Set(result.text.match(pattern) || [])];
+      if (matches.length > 0) {
+        foundKeys[platform] = matches;
+      }
+    }
+
+    // 搜索接口地址
+    const foundUrls = [...new Set(result.bodyText.match(URL_PATTERN) || [])];
+    
+    // 为接口地址创建选择区域
+    if (foundUrls.length > 0) {
+      // 激活自定义接口区段
+      const customSection = document.getElementById("custom-section");
+      if (!customSection.classList.contains("active")) {
+        customSection.classList.add("active");
+        
+        // 取消其他区段的激活状态
+        document.querySelectorAll('.section').forEach(section => {
+          if (section.id !== "custom-section") {
+            section.classList.remove("active");
+          }
+        });
       }
 
-      // 为每个平台创建密钥选择区域
-      const platformMap = {
-        openai: "openaiKey",
-        claude: "claudeKey",
-        gemini: "geminiKey",
-        deepseek: "deepseekKey",
-        groq: "groqKey",
-        siliconflow: "siliconflowKey",
-        xai: "xaiKey",
-        custom: "customApiKey",
-      };
+      const customEndpointInput = document.getElementById("customEndpoint");
+      const urlSelectionDiv = document.createElement("div");
+      urlSelectionDiv.className = "url-selection";
+      urlSelectionDiv.style.cssText = `
+        margin: 5px 0;
+        padding: 5px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 12px;
+        max-height: 100px;
+        overflow-y: auto;
+        background: white;
+      `;
 
-      // 清除之前的选择区域
-      document.querySelectorAll(".key-selection").forEach((el) => el.remove());
+      // 添加标题
+      const titleDiv = document.createElement("div");
+      titleDiv.style.cssText = `
+        padding: 5px;
+        font-weight: bold;
+        color: #666;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 5px;
+      `;
+      titleDiv.textContent = "检测到的接口地址：";
+      urlSelectionDiv.appendChild(titleDiv);
 
-      // 为每个平台创建密钥选择区域
-      for (const [platform, keys] of Object.entries(foundKeys)) {
-        if (keys.length > 0) {
-          const inputId = platformMap[platform];
-          const input = document.getElementById(inputId);
-
-          // 创建选择区域
-          const selectionDiv = document.createElement("div");
-          selectionDiv.className = "key-selection";
-          selectionDiv.style.cssText = `
-          margin: 5px 0;
-          padding: 5px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 12px;
+      foundUrls.forEach(url => {
+        const urlDiv = document.createElement("div");
+        urlDiv.style.cssText = `
+          padding: 8px;
+          margin: 2px 0;
+          background: #f5f5f5;
+          cursor: pointer;
+          border-radius: 3px;
+          transition: background-color 0.2s;
         `;
+        urlDiv.textContent = url;
+        urlDiv.title = url;
 
-          keys.forEach((key, index) => {
-            const keyDiv = document.createElement("div");
-            keyDiv.style.cssText = `
-            padding: 5px;
-            margin: 2px 0;
-            background: #f5f5f5;
-            cursor: pointer;
-            border-radius: 3px;
-          `;
-            keyDiv.textContent = `${key.slice(0, 30)}...`;
-            keyDiv.title = key;
+        urlDiv.addEventListener("mouseover", () => {
+          if (urlDiv.style.background !== "#e3f2fd") {
+            urlDiv.style.background = "#eee";
+          }
+        });
 
-            keyDiv.addEventListener("click", () => {
-              input.value = key;
-              // 高亮选中的密钥
-              selectionDiv.querySelectorAll("div").forEach((div) => {
-                div.style.background = "#f5f5f5";
-              });
-              keyDiv.style.background = "#e3f2fd";
+        urlDiv.addEventListener("mouseout", () => {
+          if (urlDiv.style.background !== "#e3f2fd") {
+            urlDiv.style.background = "#f5f5f5";
+          }
+        });
+
+        urlDiv.addEventListener("click", () => {
+          customEndpointInput.value = url;
+          // 高亮选中的 URL
+          urlSelectionDiv.querySelectorAll("div").forEach(div => {
+            if (div !== titleDiv) {
+              div.style.background = "#f5f5f5";
+            }
+          });
+          urlDiv.style.background = "#e3f2fd";
+          // 触发模型列表更新
+          handleModelListUpdate();
+          // 更新请求地址预览
+          updateRequestUrl();
+        });
+
+        urlSelectionDiv.appendChild(urlDiv);
+      });
+
+      // 移除已存在的 URL 选择区域（如果有）
+      const existingUrlSelection = customEndpointInput.parentNode.querySelector(".url-selection");
+      if (existingUrlSelection) {
+        existingUrlSelection.remove();
+      }
+
+      // 将新的 URL 选择区域插入到输入框后面
+      customEndpointInput.parentNode.insertBefore(urlSelectionDiv, customEndpointInput.nextSibling);
+    }
+
+    // 为每个平台创建密钥选择区域
+    const platformMap = {
+      openai: "openaiKey",
+      claude: "claudeKey",
+      gemini: "geminiKey",
+      deepseek: "deepseekKey",
+      groq: "groqKey",
+      siliconflow: "siliconflowKey",
+      xai: "xaiKey",
+      custom: "customApiKey",
+    };
+
+    // 清除之前的选择区域
+    document.querySelectorAll(".key-selection").forEach((el) => el.remove());
+
+    // 为每个平台创建密钥选择区域
+    for (const [platform, keys] of Object.entries(foundKeys)) {
+      if (keys.length > 0) {
+        const inputId = platformMap[platform];
+        const input = document.getElementById(inputId);
+
+        // 创建选择区域
+        const selectionDiv = document.createElement("div");
+        selectionDiv.className = "key-selection";
+        selectionDiv.style.cssText = `
+        margin: 5px 0;
+        padding: 5px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 12px;
+      `;
+
+        keys.forEach((key, index) => {
+          const keyDiv = document.createElement("div");
+          keyDiv.style.cssText = `
+          padding: 5px;
+          margin: 2px 0;
+          background: #f5f5f5;
+          cursor: pointer;
+          border-radius: 3px;
+        `;
+          keyDiv.textContent = `${key.slice(0, 30)}...`;
+          keyDiv.title = key;
+
+          keyDiv.addEventListener("click", () => {
+            input.value = key;
+            // 高亮选中的密钥
+            selectionDiv.querySelectorAll("div").forEach((div) => {
+              div.style.background = "#f5f5f5";
             });
-
-            selectionDiv.appendChild(keyDiv);
+            keyDiv.style.background = "#e3f2fd";
           });
 
-          // 将选择区域插入到输入框后面
-          input.parentNode.insertBefore(selectionDiv, input.nextSibling);
-        }
-      }
+          selectionDiv.appendChild(keyDiv);
+        });
 
-      // 显示结果
-      const totalKeys = Object.values(foundKeys).reduce(
-        (sum, keys) => sum + keys.length,
-        0
-      );
-      if (totalKeys > 0) {
-        resultDiv.innerHTML = `✅ 已找到 ${totalKeys} 个 API 密钥，请点击选择要使用的密钥`;
-      } else {
-        resultDiv.innerHTML = "⚠️ 未在页面中找到任何 API 密钥";
+        // 将选择区域插入到输入框后面
+        input.parentNode.insertBefore(selectionDiv, input.nextSibling);
       }
-    } catch (error) {
-      resultDiv.innerHTML = `❌ 自动识别失败：${error.message}`;
-      console.error("自动识别错误:", error);
     }
-  });
+
+    // 更新结果显示
+    const totalKeys = Object.values(foundKeys).reduce((sum, keys) => sum + keys.length, 0);
+    const message = [];
+    if (totalKeys > 0) {
+      message.push(`✅ 已找到 ${totalKeys} 个 API 密钥`);
+    }
+    if (foundUrls.length > 0) {
+      message.push(`✅ 已找到 ${foundUrls.length} 个接口地址`);
+    }
+    if (message.length > 0) {
+      message.push("请点击选择要使用的项目");
+      resultDiv.innerHTML = message.join("，");
+    } else {
+      resultDiv.innerHTML = "⚠️ 未在页面中找到任何 API 密钥或接口地址";
+    }
+
+  } catch (error) {
+    resultDiv.innerHTML = `❌ 自动识别失败：${error.message}`;
+    console.error("自动识别错误:", error);
+  }
+});
 
 // 添加滚动按钮功能
 document.getElementById("scrollTopBtn").addEventListener("click", () => {
