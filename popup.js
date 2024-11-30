@@ -788,6 +788,18 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
         font-size: 12px;
       `;
 
+      // 添加标题
+      const titleDiv = document.createElement("div");
+      titleDiv.style.cssText = `
+        padding: 5px;
+        font-weight: bold;
+        color: #666;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 5px;
+      `;
+      titleDiv.textContent = "检测到的密钥：";
+      selectionDiv.appendChild(titleDiv);
+
         keys.forEach((key, index) => {
           const keyDiv = document.createElement("div");
           keyDiv.style.cssText = `
