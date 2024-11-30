@@ -821,6 +821,8 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
             selectionDiv.querySelectorAll("div").forEach((div) => {
               div.style.background = "#f5f5f5";
             });
+            // 触发模型列表更新
+            handleModelListUpdate();
             keyDiv.style.background = "#e3f2fd";
           });
 
