@@ -317,6 +317,7 @@ html {
   padding: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow-x: auto;
+  position: relative;
 }
 
 .history-container h3 {
@@ -551,7 +552,7 @@ html {
   align-items: center;
 }
 
-/* 添加分页容器样式 */
+/* 修改分页容器样式 */
 .pagination {
   display: flex;
   justify-content: center;
@@ -560,8 +561,13 @@ html {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #eee;
+  min-width: 600px;
+  overflow-x: visible;
+  position: sticky;
+  left: 0;
 }
 
+/* 修改分页按钮样式 */
 .pagination button {
   margin: 0;
   padding: 4px 12px;
@@ -570,6 +576,8 @@ html {
   width: auto;
   background-color: #f0f0f0;
   color: #333;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .pagination button.active {
@@ -669,4 +677,10 @@ html {
 
 .model-select-all button:hover {
   background-color: #e0e0e0;
+}
+
+.pagination span {
+  padding: 0 8px;
+  color: #666;
+  user-select: none;
 }

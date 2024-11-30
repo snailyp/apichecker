@@ -974,16 +974,60 @@ document.getElementById("historyButton").addEventListener("click", async functio
         })
         .join("");
 
-      // 生成分页按钮
+      // 修改分页按钮生成逻辑
+      function generatePaginationButtons(currentPage, totalPages) {
+        const buttons = [];
+        const maxVisibleButtons = 5; // 最多显示的按钮数量
+
+        if (totalPages <= maxVisibleButtons) {
+          // 如果总页数小于等于最大显示数，显示所有页码
+          for (let i = 1; i <= totalPages; i++) {
+            buttons.push(`<button class="${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
+          }
+        } else {
+          // 总是显示第一页
+          buttons.push(`<button class="${1 === currentPage ? 'active' : ''}" data-page="1">1</button>`);
+
+          // 计算中间页码的起始和结束
+          let start = Math.max(2, currentPage - 1);
+          let end = Math.min(totalPages - 1, currentPage + 1);
+
+          // 如果当前页靠近开始
+          if (currentPage <= 3) {
+            end = 4;
+          }
+          // 如果当前页靠近结束
+          if (currentPage >= totalPages - 2) {
+            start = totalPages - 3;
+          }
+
+          // 添加开始的省略号
+          if (start > 2) {
+            buttons.push('<span>...</span>');
+          }
+
+          // 添加中间的页码
+          for (let i = start; i <= end; i++) {
+            buttons.push(`<button class="${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
+          }
+
+          // 添加结束的省略号
+          if (end < totalPages - 1) {
+            buttons.push('<span>...</span>');
+          }
+
+          // 总是显示最后一页
+          buttons.push(`<button class="${totalPages === currentPage ? 'active' : ''}" data-page="${totalPages}">${totalPages}</button>`);
+        }
+
+        return buttons.join('');
+      }
+
+      // 生成分页HTML
       const paginationHtml = `
         <div class="pagination">
           <button ${page === 1 ? 'disabled' : ''} id="prevPage">上一页</button>
-          ${Array.from({ length: totalPages }, (_, i) => i + 1)
-            .map(
-              (num) =>
-                `<button class="${num === page ? 'active' : ''}" data-page="${num}">${num}</button>`
-            )
-            .join('')}
+          ${generatePaginationButtons(page, totalPages)}
           <button ${page === totalPages ? 'disabled' : ''} id="nextPage">下一页</button>
         </div>
       `;
