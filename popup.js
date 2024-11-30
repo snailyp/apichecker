@@ -462,6 +462,9 @@ document.getElementById("clearButton").addEventListener("click", function () {
   // 清空模型复选框区域
   const modelCheckboxes = document.getElementById("modelCheckboxes");
   modelCheckboxes.innerHTML = "";
+
+  // 清空url预览
+  document.getElementById("urlPreview").textContent = "";
 });
 
 // 修改 fetchModels 函数，在添加复选框后添加全选/取消全选功能
