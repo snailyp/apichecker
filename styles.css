@@ -713,3 +713,38 @@ html {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+.history-filters {
+  margin: 10px 0;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.filter-group select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  flex: 1;
+  min-width: 120px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.filter-group label {
+  font-size: 14px;
+  color: #333;
+  white-space: nowrap;
+  min-width: 70px;
+}

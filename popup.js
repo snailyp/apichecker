@@ -924,39 +924,72 @@ document.getElementById("historyButton").addEventListener("click", async functio
   // 检查是否已经显示历史记录
   const existingHistory = resultDiv.querySelector('.history-container');
   if (existingHistory) {
-    // 如果已经显示，则隐藏
     resultDiv.innerHTML = '';
     return;
   }
   
   const ITEMS_PER_PAGE = 5;
   let currentPage = 1;
+
+  const platformNames = {
+    openai: "OpenAI",
+    claude: "Claude",
+    gemini: "Gemini",
+    deepseek: "Deepseek",
+    groq: "Groq",
+    siliconflow: "Siliconflow",
+    xai: "xAI",
+    custom: "自定义接口",
+  };
   
   try {
     const history = await chrome.storage.local.get("validKeys");
-    const validKeys = history.validKeys || [];
+    let validKeys = history.validKeys || [];
 
     if (validKeys.length === 0) {
       resultDiv.innerHTML = "暂无历史记录";
       return;
     }
 
-    function renderPage(page) {
+    // 获取所有唯一的endpoint和platform
+    const endpoints = [...new Set(validKeys.filter(k => k.endpoint).map(k => k.endpoint))];
+    const platforms = [...new Set(validKeys.map(k => k.platform))];
+
+    // 创建筛选器HTML
+    const filterHtml = `
+      <div class="history-filters">
+        <div class="filter-group">
+          <label for="endpointFilter">接口筛选：</label>
+          <select id="endpointFilter">
+            <option value="">全部</option>
+            ${endpoints.map(endpoint => `<option value="${endpoint}">${endpoint}</option>`).join('')}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="platformFilter">平台筛选：</label>
+          <select id="platformFilter">
+            <option value="">全部</option>
+            ${platforms.map(platform => `<option value="${platform}">${platformNames[platform] || platform}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `;
+
+    function filterKeys(endpoint, platform) {
+      return validKeys.filter(key => {
+        const endpointMatch = !endpoint || key.endpoint === endpoint;
+        const platformMatch = !platform || key.platform === platform;
+        return endpointMatch && platformMatch;
+      });
+    }
+
+    function renderPage(page, filteredKeys = validKeys) {
       const startIndex = (page - 1) * ITEMS_PER_PAGE;
       const endIndex = startIndex + ITEMS_PER_PAGE;
-      const pageItems = validKeys.slice(startIndex, endIndex);
-      const totalPages = Math.ceil(validKeys.length / ITEMS_PER_PAGE);
+      const pageItems = filteredKeys.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(filteredKeys.length / ITEMS_PER_PAGE);
 
-      const platformNames = {
-        openai: "OpenAI",
-        claude: "Claude",
-        gemini: "Gemini",
-        deepseek: "Deepseek",
-        groq: "Groq",
-        siliconflow: "Siliconflow",
-        xai: "xAI",
-        custom: "自定义接口",
-      };
+      
 
       const historyHtml = pageItems
         .map((item, index) => {
@@ -1049,10 +1082,27 @@ document.getElementById("historyButton").addEventListener("click", async functio
               <button id="clearHistoryBtn">清空历史</button>
             </div>
           </div>
+          ${filterHtml}
           ${historyHtml}
           ${paginationHtml}
         </div>
       `;
+
+      // 添加筛选器事件监听
+      const endpointFilter = document.getElementById('endpointFilter');
+      const platformFilter = document.getElementById('platformFilter');
+
+      endpointFilter.addEventListener('change', () => {
+        const filteredKeys = filterKeys(endpointFilter.value, platformFilter.value);
+        currentPage = 1;
+        renderPage(currentPage, filteredKeys);
+      });
+
+      platformFilter.addEventListener('change', () => {
+        const filteredKeys = filterKeys(endpointFilter.value, platformFilter.value);
+        currentPage = 1;
+        renderPage(currentPage, filteredKeys);
+      });
 
       // 添加分页事件监听
       document.querySelectorAll('.pagination button[data-page]').forEach(btn => {
@@ -1205,3 +1255,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+
