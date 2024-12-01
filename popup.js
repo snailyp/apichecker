@@ -440,25 +440,22 @@ document.getElementById("clearButton").addEventListener("click", function () {
   document.getElementById("customEndpoint").value = "";
   document.getElementById("customApiKey").value = "";
   document.getElementById("xaiKey").value = "";
-  
-  // 保存当前历史记录区域的内容
-  const historyContainer = document.querySelector('.history-container');
-  const historyContent = historyContainer ? historyContainer.outerHTML : '';
-  
-  // 清空结果显示区域，但保留历史记录
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = historyContent;
+
+  // 清空结果显示区域和历史记录区域
+  document.getElementById("result").innerHTML = "";
+  document.getElementById("history").innerHTML = "";
 
   // 清空所有密钥选择区域
   document.querySelectorAll(".key-selection").forEach((el) => el.remove());
 
   // 清空URL选择区域
   document.querySelectorAll(".url-selection").forEach((el) => el.remove());
-  
+
   // 清空模型下拉列表
   const modelSelect = document.getElementById("modelSelect");
-  modelSelect.innerHTML = '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
-  
+  modelSelect.innerHTML =
+    '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+
   // 清空模型复选框区域
   const modelCheckboxes = document.getElementById("modelCheckboxes");
   modelCheckboxes.innerHTML = "";
@@ -480,9 +477,11 @@ async function fetchModels(endpoint, apiKey) {
       <div class="loading-text">正在获取模型列表...</div>
     </div>
   `;
-  
+
   // 处理 endpoint 的结尾斜杠
-  const processedEndpoint = endpoint.endsWith("/") ? endpoint : endpoint + "/v1/";
+  const processedEndpoint = endpoint.endsWith("/")
+    ? endpoint
+    : endpoint + "/v1/";
 
   try {
     const response = await fetch(`${processedEndpoint}models`, {
@@ -515,67 +514,139 @@ async function fetchModels(endpoint, apiKey) {
         option.value = model.id;
         option.textContent = model.id;
         modelSelect.appendChild(option);
-        
+
         // 添加复选框
         const checkboxDiv = document.createElement("div");
         checkboxDiv.className = "model-checkbox-item";
-        
+
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.id = `model-${model.id}`;
         checkbox.value = model.id;
-        
+
         const label = document.createElement("label");
         label.htmlFor = `model-${model.id}`;
         label.textContent = model.id;
-        
+
         checkboxDiv.appendChild(checkbox);
         checkboxDiv.appendChild(label);
         modelCheckboxes.appendChild(checkboxDiv);
       });
-      
-      // 添加全选/取消全选功能
-      document.getElementById("selectAllModels").addEventListener("click", () => {
-        const checkboxes = modelCheckboxes.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(checkbox => checkbox.checked = true);
-      });
 
-      document.getElementById("deselectAllModels").addEventListener("click", () => {
-        const checkboxes = modelCheckboxes.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(checkbox => checkbox.checked = false);
-      });
-      
+      // 添加全选/取消全选功能
+      document
+        .getElementById("selectAllModels")
+        .addEventListener("click", () => {
+          const checkboxes = modelCheckboxes.querySelectorAll(
+            'input[type="checkbox"]'
+          );
+          checkboxes.forEach((checkbox) => (checkbox.checked = true));
+        });
+
+      document
+        .getElementById("deselectAllModels")
+        .addEventListener("click", () => {
+          const checkboxes = modelCheckboxes.querySelectorAll(
+            'input[type="checkbox"]'
+          );
+          checkboxes.forEach((checkbox) => (checkbox.checked = false));
+        });
+
       resultDiv.innerHTML = "✅ 成功获取模型列表";
     } else {
-      modelSelect.innerHTML = '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+      modelSelect.innerHTML =
+        '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
       throw new Error("未找到可用模型");
     }
   } catch (error) {
     console.error("获取模型列表错误:", error);
-    modelSelect.innerHTML = '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+    modelSelect.innerHTML =
+      '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
     resultDiv.innerHTML = `❌ 获取模型列表失败：${error.message}`;
     return [];
   }
 }
 
 // 添加复制模型按钮的事件监听
-document.getElementById("copyModelsBtn").addEventListener("click", async function() {
-  const checkboxes = document.querySelectorAll("#modelCheckboxes input[type='checkbox']:checked");
-  if (checkboxes.length === 0) {
-    document.getElementById("result").innerHTML = "⚠️ 请先选择要复制的模型";
+document
+  .getElementById("copyModelsBtn")
+  .addEventListener("click", async function () {
+    const checkboxes = document.querySelectorAll(
+      "#modelCheckboxes input[type='checkbox']:checked"
+    );
+    if (checkboxes.length === 0) {
+      document.getElementById("result").innerHTML = "⚠️ 请先选择要复制的模型";
+      return;
+    }
+
+    const selectedModels = Array.from(checkboxes).map((cb) => cb.value);
+    const modelText = selectedModels.join(",");
+
+    try {
+      await navigator.clipboard.writeText(modelText);
+      this.textContent = "已复制!";
+      setTimeout(() => (this.textContent = "复制选中模型"), 1000);
+    } catch (err) {
+      document.getElementById("result").innerHTML =
+        "❌ 复制失败：" + err.message;
+    }
+  });
+
+// 测试按钮点击事件
+document.getElementById("testModelsBtn").addEventListener("click", async () => {
+  const endpoint = document.getElementById("customEndpoint").value.trim();
+  const apiKey = document.getElementById("customApiKey").value.trim();
+  const selectedModels = Array.from(
+    document.querySelectorAll("#modelCheckboxes input[type='checkbox']:checked")
+  ).map((cb) => cb.value);
+
+  if (!selectedModels.length) {
+    document.getElementById("result").innerHTML = "⚠️ 请先选择要测试的模型";
     return;
   }
-  
-  const selectedModels = Array.from(checkboxes).map(cb => cb.value);
-  const modelText = selectedModels.join(",");
-  
-  try {
-    await navigator.clipboard.writeText(modelText);
-    this.textContent = "已复制!";
-    setTimeout(() => this.textContent = "复制选中模型", 1000);
-  } catch (err) {
-    document.getElementById("result").innerHTML = "❌ 复制失败：" + err.message;
-  }
+
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = "正在测试选中的模型，请稍候...";
+
+  const results = await testModels(endpoint, apiKey, selectedModels);
+
+  // 生成结果表格
+  const tableHTML = `
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <thead>
+          <tr>
+            <th>模型</th>
+            <th>状态</th>
+            <th>响应时间</th>
+            <th>返回模型</th>
+            <th>模型匹配</th>
+            <th>Token数</th>
+            <th>错误信息</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${results
+            .map(
+              (result) => `
+            <tr>
+              <td>${result.model}</td>
+              <td>${result.status}</td>
+              <td>${result.responseTime}ms</td>
+              <td>${result.returnedModel || "-"}</td>
+              <td>${result.modelMatch || "-"}</td>
+              <td>${result.tokens || "-"}</td>
+              <td>${result.error || "-"}</td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  resultDiv.innerHTML = tableHTML;
 });
 
 // 处理模型列表更新的函数
@@ -636,62 +707,65 @@ const KEY_PATTERNS = {
 };
 
 // 添加 URL 匹配的正则表达式
-const URL_PATTERN = /https?:\/\/[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*(?::\d+)?(?=\/|$)/g;
+const URL_PATTERN =
+  /https?:\/\/[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*(?::\d+)?(?=\/|$)/g;
 
-document.getElementById("autoFillButton").addEventListener("click", async function () {
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = "正在搜索 API 密钥和接口地址...";
+document
+  .getElementById("autoFillButton")
+  .addEventListener("click", async function () {
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = "正在搜索 API 密钥和接口地址...";
 
-  try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    const [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        // 只获取 body 内的文本内容
-        const bodyText = document.body.innerText;
-        return {
-          text: document.documentElement.innerText,
-          bodyText: bodyText
-        };
-      },
-    });
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      const [{ result }] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          // 只获取 body 内的文本内容
+          const bodyText = document.body.innerText;
+          return {
+            text: document.documentElement.innerText,
+            bodyText: bodyText,
+          };
+        },
+      });
 
-    // 存储找到的所有密钥
-    const foundKeys = {};
+      // 存储找到的所有密钥
+      const foundKeys = {};
 
-    // 搜索所有类型的密钥
-    for (const [platform, pattern] of Object.entries(KEY_PATTERNS)) {
-      const matches = [...new Set(result.text.match(pattern) || [])];
-      if (matches.length > 0) {
-        foundKeys[platform] = matches;
-      }
-    }
-
-    // 搜索接口地址
-    const foundUrls = [...new Set(result.bodyText.match(URL_PATTERN) || [])];
-    
-    // 为接口地址创建选择区域
-    if (foundUrls.length > 0) {
-      // 激活自定义接口区段
-      const customSection = document.getElementById("custom-section");
-      if (!customSection.classList.contains("active")) {
-        customSection.classList.add("active");
-        
-        // 取消其他区段的激活状态
-        document.querySelectorAll('.section').forEach(section => {
-          if (section.id !== "custom-section") {
-            section.classList.remove("active");
-          }
-        });
+      // 搜索所有类型的密钥
+      for (const [platform, pattern] of Object.entries(KEY_PATTERNS)) {
+        const matches = [...new Set(result.text.match(pattern) || [])];
+        if (matches.length > 0) {
+          foundKeys[platform] = matches;
+        }
       }
 
-      const customEndpointInput = document.getElementById("customEndpoint");
-      const urlSelectionDiv = document.createElement("div");
-      urlSelectionDiv.className = "url-selection";
-      urlSelectionDiv.style.cssText = `
+      // 搜索接口地址
+      const foundUrls = [...new Set(result.bodyText.match(URL_PATTERN) || [])];
+
+      // 为接口地址创建选择区域
+      if (foundUrls.length > 0) {
+        // 激活自定义接口区段
+        const customSection = document.getElementById("custom-section");
+        if (!customSection.classList.contains("active")) {
+          customSection.classList.add("active");
+
+          // 取消其他区段的激活状态
+          document.querySelectorAll(".section").forEach((section) => {
+            if (section.id !== "custom-section") {
+              section.classList.remove("active");
+            }
+          });
+        }
+
+        const customEndpointInput = document.getElementById("customEndpoint");
+        const urlSelectionDiv = document.createElement("div");
+        urlSelectionDiv.className = "url-selection";
+        urlSelectionDiv.style.cssText = `
         margin: 5px 0;
         padding: 5px;
         border: 1px solid #ddd;
@@ -702,21 +776,21 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
         background: white;
       `;
 
-      // 添加标题
-      const titleDiv = document.createElement("div");
-      titleDiv.style.cssText = `
+        // 添加标题
+        const titleDiv = document.createElement("div");
+        titleDiv.style.cssText = `
         padding: 5px;
         font-weight: bold;
         color: #666;
         border-bottom: 1px solid #eee;
         margin-bottom: 5px;
       `;
-      titleDiv.textContent = "检测到的接口地址：";
-      urlSelectionDiv.appendChild(titleDiv);
+        titleDiv.textContent = "检测到的接口地址：";
+        urlSelectionDiv.appendChild(titleDiv);
 
-      foundUrls.forEach(url => {
-        const urlDiv = document.createElement("div");
-        urlDiv.style.cssText = `
+        foundUrls.forEach((url) => {
+          const urlDiv = document.createElement("div");
+          urlDiv.style.cssText = `
           padding: 8px;
           margin: 2px 0;
           background: #f5f5f5;
@@ -724,74 +798,78 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
           border-radius: 3px;
           transition: background-color 0.2s;
         `;
-        urlDiv.textContent = url;
-        urlDiv.title = url;
+          urlDiv.textContent = url;
+          urlDiv.title = url;
 
-        urlDiv.addEventListener("mouseover", () => {
-          if (urlDiv.style.background !== "#e3f2fd") {
-            urlDiv.style.background = "#eee";
-          }
-        });
-
-        urlDiv.addEventListener("mouseout", () => {
-          if (urlDiv.style.background !== "#e3f2fd") {
-            urlDiv.style.background = "#f5f5f5";
-          }
-        });
-
-        urlDiv.addEventListener("click", () => {
-          customEndpointInput.value = url;
-          // 高亮选中的 URL
-          urlSelectionDiv.querySelectorAll("div").forEach(div => {
-            if (div !== titleDiv) {
-              div.style.background = "#f5f5f5";
+          urlDiv.addEventListener("mouseover", () => {
+            if (urlDiv.style.background !== "#e3f2fd") {
+              urlDiv.style.background = "#eee";
             }
           });
-          urlDiv.style.background = "#e3f2fd";
-          // 触发模型列表更新
-          handleModelListUpdate();
-          // 更新请求地址预览
-          updateRequestUrl();
+
+          urlDiv.addEventListener("mouseout", () => {
+            if (urlDiv.style.background !== "#e3f2fd") {
+              urlDiv.style.background = "#f5f5f5";
+            }
+          });
+
+          urlDiv.addEventListener("click", () => {
+            customEndpointInput.value = url;
+            // 高亮选中的 URL
+            urlSelectionDiv.querySelectorAll("div").forEach((div) => {
+              if (div !== titleDiv) {
+                div.style.background = "#f5f5f5";
+              }
+            });
+            urlDiv.style.background = "#e3f2fd";
+            // 触发模型列表更新
+            handleModelListUpdate();
+            // 更新请求地址预览
+            updateRequestUrl();
+          });
+
+          urlSelectionDiv.appendChild(urlDiv);
         });
 
-        urlSelectionDiv.appendChild(urlDiv);
-      });
+        // 移除已存在的 URL 选择区域（如果有）
+        const existingUrlSelection =
+          customEndpointInput.parentNode.querySelector(".url-selection");
+        if (existingUrlSelection) {
+          existingUrlSelection.remove();
+        }
 
-      // 移除已存在的 URL 选择区域（如果有）
-      const existingUrlSelection = customEndpointInput.parentNode.querySelector(".url-selection");
-      if (existingUrlSelection) {
-        existingUrlSelection.remove();
+        // 将新的 URL 选择区域插入到输入框后面
+        customEndpointInput.parentNode.insertBefore(
+          urlSelectionDiv,
+          customEndpointInput.nextSibling
+        );
       }
 
-      // 将新的 URL 选择区域插入到输入框后面
-      customEndpointInput.parentNode.insertBefore(urlSelectionDiv, customEndpointInput.nextSibling);
-    }
+      // 为每个平台创建密钥选择区域
+      const platformMap = {
+        openai: "openaiKey",
+        claude: "claudeKey",
+        gemini: "geminiKey",
+        deepseek: "deepseekKey",
+        groq: "groqKey",
+        siliconflow: "siliconflowKey",
+        xai: "xaiKey",
+        custom: "customApiKey",
+      };
 
-    // 为每个平台创建密钥选择区域
-    const platformMap = {
-      openai: "openaiKey",
-      claude: "claudeKey",
-      gemini: "geminiKey",
-      deepseek: "deepseekKey",
-      groq: "groqKey",
-      siliconflow: "siliconflowKey",
-      xai: "xaiKey",
-      custom: "customApiKey",
-    };
+      // 清除之前的选择区域
+      document.querySelectorAll(".key-selection").forEach((el) => el.remove());
 
-    // 清除之前的选择区域
-    document.querySelectorAll(".key-selection").forEach((el) => el.remove());
+      // 为每个平台创建密钥选择区域
+      for (const [platform, keys] of Object.entries(foundKeys)) {
+        if (keys.length > 0) {
+          const inputId = platformMap[platform];
+          const input = document.getElementById(inputId);
 
-    // 为每个平台创建密钥选择区域
-    for (const [platform, keys] of Object.entries(foundKeys)) {
-      if (keys.length > 0) {
-        const inputId = platformMap[platform];
-        const input = document.getElementById(inputId);
-
-        // 创建选择区域
-        const selectionDiv = document.createElement("div");
-        selectionDiv.className = "key-selection";
-        selectionDiv.style.cssText = `
+          // 创建选择区域
+          const selectionDiv = document.createElement("div");
+          selectionDiv.className = "key-selection";
+          selectionDiv.style.cssText = `
         margin: 5px 0;
         padding: 5px;
         border: 1px solid #ddd;
@@ -799,70 +877,72 @@ document.getElementById("autoFillButton").addEventListener("click", async functi
         font-size: 12px;
       `;
 
-      // 添加标题
-      const titleDiv = document.createElement("div");
-      titleDiv.style.cssText = `
+          // 添加标题
+          const titleDiv = document.createElement("div");
+          titleDiv.style.cssText = `
         padding: 5px;
         font-weight: bold;
         color: #666;
         border-bottom: 1px solid #eee;
         margin-bottom: 5px;
       `;
-      titleDiv.textContent = "检测到的密钥：";
-      selectionDiv.appendChild(titleDiv);
+          titleDiv.textContent = "检测到的密钥：";
+          selectionDiv.appendChild(titleDiv);
 
-        keys.forEach((key, index) => {
-          const keyDiv = document.createElement("div");
-          keyDiv.style.cssText = `
+          keys.forEach((key, index) => {
+            const keyDiv = document.createElement("div");
+            keyDiv.style.cssText = `
           padding: 5px;
           margin: 2px 0;
           background: #f5f5f5;
           cursor: pointer;
           border-radius: 3px;
         `;
-          keyDiv.textContent = `${key.slice(0, 30)}...`;
-          keyDiv.title = key;
+            keyDiv.textContent = `${key.slice(0, 30)}...`;
+            keyDiv.title = key;
 
-          keyDiv.addEventListener("click", () => {
-            input.value = key;
-            // 高亮选中的密钥
-            selectionDiv.querySelectorAll("div").forEach((div) => {
-              div.style.background = "#f5f5f5";
+            keyDiv.addEventListener("click", () => {
+              input.value = key;
+              // 高亮选中的密钥
+              selectionDiv.querySelectorAll("div").forEach((div) => {
+                div.style.background = "#f5f5f5";
+              });
+              // 触发模型列表更新
+              handleModelListUpdate();
+              keyDiv.style.background = "#e3f2fd";
             });
-            // 触发模型列表更新
-            handleModelListUpdate();
-            keyDiv.style.background = "#e3f2fd";
+
+            selectionDiv.appendChild(keyDiv);
           });
 
-          selectionDiv.appendChild(keyDiv);
-        });
-
-        // 将选择区域插入到输入框后面
-        input.parentNode.insertBefore(selectionDiv, input.nextSibling);
+          // 将选择区域插入到输入框后面
+          input.parentNode.insertBefore(selectionDiv, input.nextSibling);
+        }
       }
-    }
 
-    // 更新结果显示
-    const totalKeys = Object.values(foundKeys).reduce((sum, keys) => sum + keys.length, 0);
-    const message = [];
-    if (totalKeys > 0) {
-      message.push(`✅ 已找到 ${totalKeys} 个 API 密钥`);
+      // 更新结果显示
+      const totalKeys = Object.values(foundKeys).reduce(
+        (sum, keys) => sum + keys.length,
+        0
+      );
+      const message = [];
+      if (totalKeys > 0) {
+        message.push(`✅ 已找到 ${totalKeys} 个 API 密钥`);
+      }
+      if (foundUrls.length > 0) {
+        message.push(`✅ 已找到 ${foundUrls.length} 个接口地址`);
+      }
+      if (message.length > 0) {
+        message.push("请点击选择要使用的项目");
+        resultDiv.innerHTML = message.join("，");
+      } else {
+        resultDiv.innerHTML = "⚠️ 未在页面中找到任何 API 密钥或接口地址";
+      }
+    } catch (error) {
+      resultDiv.innerHTML = `❌ 自动识别失败：${error.message}`;
+      console.error("自动识别错误:", error);
     }
-    if (foundUrls.length > 0) {
-      message.push(`✅ 已找到 ${foundUrls.length} 个接口地址`);
-    }
-    if (message.length > 0) {
-      message.push("请点击选择要使用的项目");
-      resultDiv.innerHTML = message.join("，");
-    } else {
-      resultDiv.innerHTML = "⚠️ 未在页面中找到任何 API 密钥或接口地址";
-    }
-
-  } catch (error) {
-    resultDiv.innerHTML = `❌ 自动识别失败：${error.message}`;
-    console.error("自动识别错误:", error);
-  }
-});
+  });
 
 // 添加滚动按钮功能
 document.getElementById("scrollTopBtn").addEventListener("click", () => {
@@ -919,15 +999,15 @@ async function saveValidKey(platform, key, endpoint = "") {
 
 // 修改历史记录按钮的点击事件处理
 document.getElementById("historyButton").addEventListener("click", async function () {
-  const resultDiv = document.getElementById("result");
+  const historyDiv = document.getElementById("history");
   
   // 检查是否已经显示历史记录
-  const existingHistory = resultDiv.querySelector('.history-container');
+  const existingHistory = historyDiv.querySelector(".history-container");
   if (existingHistory) {
-    resultDiv.innerHTML = '';
+    historyDiv.innerHTML = "";
     return;
   }
-  
+
   const ITEMS_PER_PAGE = 5;
   let currentPage = 1;
 
@@ -941,42 +1021,55 @@ document.getElementById("historyButton").addEventListener("click", async functio
     xai: "xAI",
     custom: "自定义接口",
   };
-  
+
   try {
     const history = await chrome.storage.local.get("validKeys");
     let validKeys = history.validKeys || [];
 
     if (validKeys.length === 0) {
-      resultDiv.innerHTML = "暂无历史记录";
+      historyDiv.innerHTML = "暂无历史记录";
       return;
     }
 
     // 获取所有唯一的endpoint和platform
-    const endpoints = [...new Set(validKeys.filter(k => k.endpoint).map(k => k.endpoint))];
-    const platforms = [...new Set(validKeys.map(k => k.platform))];
+    const endpoints = [
+      ...new Set(validKeys.filter((k) => k.endpoint).map((k) => k.endpoint)),
+    ];
+    const platforms = [...new Set(validKeys.map((k) => k.platform))];
 
     // 创建筛选器HTML
     const filterHtml = `
-      <div class="history-filters">
-        <div class="filter-group">
-          <label for="endpointFilter">接口筛选：</label>
-          <select id="endpointFilter">
-            <option value="">全部</option>
-            ${endpoints.map(endpoint => `<option value="${endpoint}">${endpoint}</option>`).join('')}
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="platformFilter">平台筛选：</label>
-          <select id="platformFilter">
-            <option value="">全部</option>
-            ${platforms.map(platform => `<option value="${platform}">${platformNames[platform] || platform}</option>`).join('')}
-          </select>
-        </div>
+    <div class="history-filters">
+      <div class="filter-group">
+        <label for="endpointFilter">接口筛选：</label>
+        <select id="endpointFilter">
+          <option value="">全部</option>
+          ${endpoints
+            .map(
+              (endpoint) => `<option value="${endpoint}">${endpoint}</option>`
+            )
+            .join("")}
+        </select>
       </div>
-    `;
+      <div class="filter-group">
+        <label for="platformFilter">平台筛选：</label>
+        <select id="platformFilter">
+          <option value="">全部</option>
+          ${platforms
+            .map(
+              (platform) =>
+                `<option value="${platform}">${
+                  platformNames[platform] || platform
+                }</option>`
+            )
+            .join("")}
+        </select>
+      </div>
+    </div>
+  `;
 
     function filterKeys(endpoint, platform) {
-      return validKeys.filter(key => {
+      return validKeys.filter((key) => {
         const endpointMatch = !endpoint || key.endpoint === endpoint;
         const platformMatch = !platform || key.platform === platform;
         return endpointMatch && platformMatch;
@@ -989,29 +1082,29 @@ document.getElementById("historyButton").addEventListener("click", async functio
       const pageItems = filteredKeys.slice(startIndex, endIndex);
       const totalPages = Math.ceil(filteredKeys.length / ITEMS_PER_PAGE);
 
-      
-
       const historyHtml = pageItems
         .map((item, index) => {
           const date = new Date(item.timestamp).toLocaleString("zh-CN");
-          const keyPreview = `${item.key.slice(0, 8)}...${item.key.slice(-8)}`;
+          const keyPreview = `${item.key.slice(0, 8)}...${item.key.slice(
+            -8
+          )}`;
           const platformName = platformNames[item.platform] || item.platform;
           const absoluteIndex = startIndex + index;
 
           return `
-            <div class="history-item" data-key="${item.key}" data-platform="${item.platform}" ${
-            item.endpoint ? `data-endpoint="${item.endpoint}"` : ""
-          }>
-              <div class="history-platform">${platformName}</div>
-              <div class="history-key">${keyPreview}</div>
-              <div class="history-time">${date}</div>
-              <div class="history-actions">
-                <button class="copy-key-btn">复制</button>
-                <button class="use-key-btn">使用</button>
-                <button class="delete-key-btn" data-index="${absoluteIndex}">删除</button>
-              </div>
+          <div class="history-item" data-key="${item.key}" data-platform="${
+            item.platform
+          }" ${item.endpoint ? `data-endpoint="${item.endpoint}"` : ""}>
+            <div class="history-platform">${platformName}</div>
+            <div class="history-key">${keyPreview}</div>
+            <div class="history-time">${date}</div>
+            <div class="history-actions">
+              <button class="copy-key-btn">复制</button>
+              <button class="use-key-btn">使用</button>
+              <button class="delete-key-btn" data-index="${absoluteIndex}">删除</button>
             </div>
-          `;
+          </div>
+        `;
         })
         .join("");
 
@@ -1023,11 +1116,19 @@ document.getElementById("historyButton").addEventListener("click", async functio
         if (totalPages <= maxVisibleButtons) {
           // 如果总页数小于等于最大显示数，显示所有页码
           for (let i = 1; i <= totalPages; i++) {
-            buttons.push(`<button class="${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
+            buttons.push(
+              `<button class="${
+                i === currentPage ? "active" : ""
+              }" data-page="${i}">${i}</button>`
+            );
           }
         } else {
           // 总是显示第一页
-          buttons.push(`<button class="${1 === currentPage ? 'active' : ''}" data-page="1">1</button>`);
+          buttons.push(
+            `<button class="${
+              1 === currentPage ? "active" : ""
+            }" data-page="1">1</button>`
+          );
 
           // 计算中间页码的起始和结束
           let start = Math.max(2, currentPage - 1);
@@ -1044,82 +1145,100 @@ document.getElementById("historyButton").addEventListener("click", async functio
 
           // 添加开始的省略号
           if (start > 2) {
-            buttons.push('<span>...</span>');
+            buttons.push("<span>...</span>");
           }
 
           // 添加中间的页码
           for (let i = start; i <= end; i++) {
-            buttons.push(`<button class="${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`);
+            buttons.push(
+              `<button class="${
+                i === currentPage ? "active" : ""
+              }" data-page="${i}">${i}</button>`
+            );
           }
 
           // 添加结束的省略号
           if (end < totalPages - 1) {
-            buttons.push('<span>...</span>');
+            buttons.push("<span>...</span>");
           }
 
           // 总是显示最后一页
-          buttons.push(`<button class="${totalPages === currentPage ? 'active' : ''}" data-page="${totalPages}">${totalPages}</button>`);
+          buttons.push(
+            `<button class="${
+              totalPages === currentPage ? "active" : ""
+            }" data-page="${totalPages}">${totalPages}</button>`
+          );
         }
 
-        return buttons.join('');
+        return buttons.join("");
       }
 
       // 生成分页HTML
       const paginationHtml = `
-        <div class="pagination">
-          <button ${page === 1 ? 'disabled' : ''} id="prevPage">上一页</button>
-          ${generatePaginationButtons(page, totalPages)}
-          <button ${page === totalPages ? 'disabled' : ''} id="nextPage">下一页</button>
-        </div>
-      `;
+      <div class="pagination">
+        <button ${page === 1 ? "disabled" : ""} id="prevPage">上一页</button>
+        ${generatePaginationButtons(page, totalPages)}
+        <button ${
+          page === totalPages ? "disabled" : ""
+        } id="nextPage">下一页</button>
+      </div>
+    `;
 
-      resultDiv.innerHTML = `
-        <div class="history-container">
-          <div class="history-header">
-            <h3>历史有效密钥</h3>
-            <div class="history-header-buttons">
-              <button id="copyAllKeysBtn" title="复制所有密钥">复制全部</button>
-              <button id="clearHistoryBtn">清空历史</button>
-            </div>
+      historyDiv.innerHTML = `
+      <div class="history-container">
+        <div class="history-header">
+          <h3>历史有效密钥</h3>
+          <div class="history-header-buttons">
+            <button id="copyAllKeysBtn" title="复制所有密钥">复制全部</button>
+            <button id="clearHistoryBtn">清空历史</button>
           </div>
-          ${filterHtml}
-          ${historyHtml}
-          ${paginationHtml}
         </div>
-      `;
+        ${filterHtml}
+        ${historyHtml}
+        ${paginationHtml}
+      </div>
+    `;
 
       // 添加筛选器事件监听
-      const endpointFilter = document.getElementById('endpointFilter');
-      const platformFilter = document.getElementById('platformFilter');
+      const endpointFilter = document.getElementById("endpointFilter");
+      const platformFilter = document.getElementById("platformFilter");
 
-      endpointFilter.addEventListener('change', () => {
-        const filteredKeys = filterKeys(endpointFilter.value, platformFilter.value);
+      endpointFilter.addEventListener("change", () => {
+        const filteredKeys = filterKeys(
+          endpointFilter.value,
+          platformFilter.value
+        );
         currentPage = 1;
         renderPage(currentPage, filteredKeys);
       });
 
-      platformFilter.addEventListener('change', () => {
-        const filteredKeys = filterKeys(endpointFilter.value, platformFilter.value);
+      platformFilter.addEventListener("change", () => {
+        const filteredKeys = filterKeys(
+          endpointFilter.value,
+          platformFilter.value
+        );
         currentPage = 1;
         renderPage(currentPage, filteredKeys);
       });
 
       // 添加分页事件监听
-      document.querySelectorAll('.pagination button[data-page]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          currentPage = parseInt(btn.dataset.page);
-          renderPage(currentPage);
+      document
+        .querySelectorAll(".pagination button[data-page]")
+        .forEach((btn) => {
+          btn.addEventListener("click", () => {
+            currentPage = parseInt(btn.dataset.page);
+            renderPage(currentPage);
+          });
         });
-      });
 
-      document.getElementById('prevPage')?.addEventListener('click', () => {
+      document.getElementById("prevPage")?.addEventListener("click", () => {
         if (currentPage > 1) {
           currentPage--;
           renderPage(currentPage);
         }
       });
 
-      document.getElementById('nextPage')?.addEventListener('click', () => {
+      document.getElementById("nextPage")?.addEventListener("click", () => {
         if (currentPage < totalPages) {
           currentPage++;
           renderPage(currentPage);
@@ -1134,7 +1253,6 @@ document.getElementById("historyButton").addEventListener("click", async functio
 
         const actionsDiv = item.querySelector(".history-actions");
         const copyBtn = actionsDiv.querySelector(".copy-key-btn");
-      
 
         copyBtn.addEventListener("click", async () => {
           try {
@@ -1143,7 +1261,7 @@ document.getElementById("historyButton").addEventListener("click", async functio
             if (endpoint) {
               copyText += `\nEndpoint: ${endpoint}`;
             }
-            
+
             await navigator.clipboard.writeText(copyText);
             const originalText = copyBtn.textContent;
             copyBtn.textContent = "已复制!";
@@ -1220,40 +1338,114 @@ document.getElementById("historyButton").addEventListener("click", async functio
         .addEventListener("click", async function () {
           if (confirm("确定要清空所有历史记录吗？")) {
             await chrome.storage.local.set({ validKeys: [] });
-            resultDiv.innerHTML = "暂无历史记录";
+            historyDiv.innerHTML = "暂无历史记录";
           }
         });
     }
 
     // 初始渲染第一页
     renderPage(currentPage);
-    
   } catch (error) {
-    resultDiv.innerHTML = `获取历史记录失败：${error.message}`;
+    historyDiv.innerHTML = `获取历史记录失败：${error.message}`;
   }
 });
 
 // 添加导航菜单控制逻辑
-document.addEventListener('DOMContentLoaded', function() {
-  const navLinks = document.querySelectorAll('.nav-menu a');
-  
-  navLinks.forEach(link => {
-    link.addEventListener('click', function(e) {
+document.addEventListener("DOMContentLoaded", function () {
+  // 默认激活自定义接口区段
+  const customSection = document.getElementById("custom-section");
+  customSection.classList.add("active");
+
+  // 默认激活导航菜单中的自定义接口链接
+  const customNavLink = document.querySelector(
+    ".nav-menu a[href='#custom-section']"
+  );
+  customNavLink.classList.add("active");
+
+  const navLinks = document.querySelectorAll(".nav-menu a");
+
+  navLinks.forEach((link) => {
+    link.addEventListener("click", function (e) {
       e.preventDefault();
-      
+
       // 切换当前链接的激活状态
-      this.classList.toggle('active');
-      
+      this.classList.toggle("active");
+
       // 获取目标区域的ID
-      const targetId = this.getAttribute('href').substring(1);
+      const targetId = this.getAttribute("href").substring(1);
       const targetSection = document.getElementById(targetId);
-      
+
       // 切换目标区域的显示状态
       if (targetSection) {
-        targetSection.classList.toggle('active');
+        targetSection.classList.toggle("active");
       }
     });
   });
 });
 
+// 多模型检测功能
+async function testModels(endpoint, apiKey, selectedModels) {
+  const results = [];
+  const processedEndpoint = endpoint.endsWith("/")
+    ? endpoint
+    : endpoint + "/v1/";
+
+  for (const model of selectedModels) {
+    try {
+      const startTime = performance.now();
+      const response = await fetch(`${processedEndpoint}chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: "user", content: "Hi" }],
+          max_tokens: 10,
+        }),
+      });
+
+      const endTime = performance.now();
+      const responseTime = (endTime - startTime).toFixed(2);
+
+      if (response.ok) {
+        const data = await response.json();
+        const modelMatch = data.model === model;
+
+        results.push({
+          model,
+          status: "✅",
+          responseTime,
+          returnedModel: data.model,
+          modelMatch: modelMatch ? "✅" : "❌",
+          tokens: data.usage?.total_tokens || "-",
+        });
+      } else {
+        const errorData = await response.json();
+        results.push({
+          model,
+          status: "❌",
+          responseTime,
+          returnedModel: "-",
+          modelMatch: "-",
+          tokens: "-",
+          error: errorData.error?.message || "未知错误",
+        });
+      }
+    } catch (error) {
+      results.push({
+        model,
+        status: "❌",
+        responseTime: "-",
+        returnedModel: "-",
+        modelMatch: "-",
+        tokens: "-",
+        error: error.message,
+      });
+    }
+  }
+
+  return results;
+}
 

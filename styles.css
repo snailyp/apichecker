@@ -748,3 +748,117 @@ html {
   white-space: nowrap;
   min-width: 70px;
 }
+
+/* 添加测试按钮样式 */
+#testModelsBtn {
+  background-color: #1a73e8;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+#testModelsBtn:hover {
+  background-color: #1557b0;
+}
+
+/* 表格样式 */
+#result table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+#result th,
+#result td {
+  padding: 8px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+#result th {
+  background-color: #f5f5f5;
+  font-weight: 500;
+}
+
+#result tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+#result tr:hover {
+  background-color: #f5f5f5;
+}
+
+/* 模型操作按钮组样式 */
+.model-action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.model-action-buttons button {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+#testModelsBtn {
+  background-color: #1a73e8;
+}
+
+#testModelsBtn:hover {
+  background-color: #1557b0;
+}
+
+#copyModelsBtn {
+  background-color: #4caf50;
+}
+
+#copyModelsBtn:hover {
+  background-color: #45a049;
+}
+
+/* 添加按钮容器样式 */
+.model-action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* 修改复制和测试按钮样式 */
+.copy-models-btn,
+.test-models-btn {
+  flex: 1;
+  margin-top: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+  height: auto;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.copy-models-btn {
+  background-color: #4caf50;
+}
+
+.copy-models-btn:hover {
+  background-color: #45a049;
+}
+
+.test-models-btn {
+  background-color: #1a73e8;
+}
+
+.test-models-btn:hover {
+  background-color: #1557b0;
+}
