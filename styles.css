@@ -766,24 +766,32 @@ html {
   background-color: #1557b0;
 }
 
-/* 表格样式 */
+/* 表格样式优化 */
 #result table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
   font-size: 14px;
+  min-width: 800px; /* 确保表格有最小宽度 */
 }
 
 #result th,
 #result td {
-  padding: 8px;
+  padding: 8px 12px;
   border: 1px solid #ddd;
   text-align: left;
+  vertical-align: middle;
 }
 
 #result th {
   background-color: #f5f5f5;
   font-weight: 500;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #result tr:nth-child(even) {
@@ -792,6 +800,24 @@ html {
 
 #result tr:hover {
   background-color: #f5f5f5;
+}
+
+#result td {
+  word-break: break-word;
+  max-width: 300px; /* 限制单元格最大宽度 */
+}
+
+/* 添加表格容器的水平滚动 */
+#result > div {
+  overflow-x: auto;
+  margin: 0 -16px; /* 抵消父容器的padding */
+  padding: 0 16px;
+}
+
+/* 确保错误信息列可以自动换行 */
+#result td:last-child {
+  white-space: normal;
+  min-width: 200px;
 }
 
 /* 模型操作按钮组样式 */

@@ -616,13 +616,13 @@ document.getElementById("testModelsBtn").addEventListener("click", async () => {
       <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
         <thead>
           <tr>
-            <th>模型</th>
-            <th>状态</th>
-            <th>响应时间</th>
-            <th>返回模型</th>
-            <th>模型匹配</th>
-            <th>Token数</th>
-            <th>错误信息</th>
+            <th style="min-width: 120px; white-space: nowrap;">请求模型</th>
+            <th style="min-width: 60px; white-space: nowrap;">状态</th>
+            <th style="min-width: 100px; white-space: nowrap;">响应时间</th>
+            <th style="min-width: 120px; white-space: nowrap;">返回模型</th>
+            <th style="min-width: 80px; white-space: nowrap;">模型匹配</th>
+            <th style="min-width: 80px; white-space: nowrap;">Token数</th>
+            <th style="min-width: 200px; white-space: nowrap;">错误信息</th>
           </tr>
         </thead>
         <tbody>
