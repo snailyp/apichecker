@@ -298,6 +298,18 @@ document
             `❌ 自定义接口错误：${errorData.error?.message || "未知错误"}`
           );
         }
+
+        const historyDiv = document.getElementById("history");
+
+        // 检查是否已经显示历史记录
+        const existingHistory = historyDiv.querySelector(".history-container");
+        
+        // 重新渲染历史面板
+        if (existingHistory) {
+          document.getElementById("historyButton").click();
+          document.getElementById("historyButton").click();
+        }
+
       } catch (error) {
         results.push(`❌ 自定义接口错误：${error.message}`);
       }
@@ -333,9 +345,8 @@ document.getElementById("clearButton").addEventListener("click", function () {
   document.getElementById("customApiKey").value = "";
   document.getElementById("xaiKey").value = "";
 
-  // 清空结果显示区域和历史记录区域
+  // 清空结果显示区域
   document.getElementById("result").innerHTML = "";
-  document.getElementById("history").innerHTML = "";
 
   // 清空所有密钥选择区域
   document.querySelectorAll(".key-selection").forEach((el) => el.remove());
@@ -928,7 +939,7 @@ async function saveValidKey(platform, key, endpoint = "") {
     // 按时间戳降序排序
     validKeys.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // 限制历史记录数量为20条
+    // 限制历史记录数量为100条
     const trimmedKeys = validKeys.slice(0, 100);
 
     await chrome.storage.local.set({ validKeys: trimmedKeys });
@@ -937,7 +948,7 @@ async function saveValidKey(platform, key, endpoint = "") {
   }
 }
 
-// 修改历史记录按钮的点击事件处理
+// 历史记录按钮的点击事件处理
 document
   .getElementById("historyButton")
   .addEventListener("click", async function () {
@@ -1247,7 +1258,19 @@ document
             const platform = item.dataset.platform;
             const endpoint = item.dataset.endpoint;
 
-            // 填对应的输入框
+            // 获取对应的区段和导航链接
+            let sectionId = `${platform}-section`;
+            let navLinkSelector = `.nav-menu a[href='#${platform}-section']`;
+
+            // 如果区段未激活,则激活它
+            const section = document.getElementById(sectionId);
+            const navLink = document.querySelector(navLinkSelector);
+            if (!section.classList.contains("active")) {
+              section.classList.add("active");
+              navLink.classList.add("active");
+            }
+
+            // 填充对应的输入框
             if (platform === "custom") {
               document.getElementById("customApiKey").value = key;
               document.getElementById("customEndpoint").value = endpoint;
@@ -1269,7 +1292,8 @@ document
             validKeys.splice(index, 1);
             await chrome.storage.local.set({ validKeys });
 
-            // 重新加载历史记录
+            // 重新渲染历史面板
+            document.getElementById("historyButton").click();
             document.getElementById("historyButton").click();
           });
         });
