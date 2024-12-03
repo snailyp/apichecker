@@ -939,8 +939,8 @@ async function saveValidKey(platform, key, endpoint = "") {
     // 按时间戳降序排序
     validKeys.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // 限制历史记录数量为100条
-    const trimmedKeys = validKeys.slice(0, 100);
+    // 限制历史记录数量为500条
+    const trimmedKeys = validKeys.slice(0, 500);
 
     await chrome.storage.local.set({ validKeys: trimmedKeys });
   } catch (error) {
