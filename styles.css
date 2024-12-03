@@ -953,3 +953,21 @@ html {
   padding-bottom: 8px;
   border-bottom: 2px solid #e8f0fe;
 }
+
+/* 添加余额查询按钮样式 */
+.check-balance-btn {
+  background-color: #ffc107;
+}
+
+.check-balance-btn:hover {
+  background-color: #e0a800;
+}
+
+/* 修改固定按钮组样式 */
+.action-buttons button#checkBalanceBtn {
+  background-color: rgba(255, 193, 7, 0.6); /* 使用半透明的黄色，与其他按钮风格一致 */
+}
+
+.action-buttons button#checkBalanceBtn:hover {
+  background-color: rgba(224, 168, 0, 0.6);
+}

@@ -138,39 +138,16 @@ document
               max_tokens: 10,
             }),
           }),
-          // 新增余额查询
-          fetch("https://api.deepseek.com/user/balance", {
-            headers: {
-              Authorization: `Bearer ${deepseekKey}`,
-              Accept: "application/json",
-            },
-          }),
         ]);
 
-        if (completionResponse.ok && balanceResponse.ok) {
-          const balanceData = await balanceResponse.json();
-          const balanceInfo = balanceData.balance_infos[0];
-          results.push(
-            "✅ Deepseek API 密钥有效。",
-            `💰 余额信息：`,
-            `- 总余额：${balanceInfo.total_balance} ${balanceInfo.currency}`,
-            `- 赠送余额：${balanceInfo.granted_balance} ${balanceInfo.currency}`,
-            `- 充值余额：${balanceInfo.topped_up_balance} ${balanceInfo.currency}`
-          );
+        if (completionResponse.ok) {
+          results.push("✅ Deepseek API 密钥有效。");
           await saveValidKey("deepseek", deepseekKey);
         } else {
           if (!completionResponse.ok) {
             const errorData = await completionResponse.json();
             results.push(
               `❌ Deepseek API 错误：${errorData.error?.message || "未知错误"}`
-            );
-          }
-          if (!balanceResponse.ok) {
-            const balanceError = await balanceResponse.json();
-            results.push(
-              `❌ Deepseek 余额查询错误：${
-                balanceError.error?.message || "未知错误"
-              }`
             );
           }
         }
@@ -215,7 +192,7 @@ document
     if (siliconflowKey) {
       try {
         // 并行发送两个请求
-        const [completionResponse, userInfoResponse] = await Promise.all([
+        const [completionResponse] = await Promise.all([
           // 原有的 API 可用性检测
           fetch("https://api.siliconflow.cn/v1/chat/completions", {
             method: "POST",
@@ -229,45 +206,17 @@ document
               max_tokens: 10,
             }),
           }),
-          // 新增用户信息查询
-          fetch("https://api.siliconflow.cn/v1/user/info", {
-            headers: {
-              Authorization: `Bearer ${siliconflowKey}`,
-            },
-          }),
         ]);
 
-        if (completionResponse.ok && userInfoResponse.ok) {
-          const userInfo = await userInfoResponse.json();
-          if (userInfo.status && userInfo.code === 20000) {
-            const data = userInfo.data;
-            results.push(
-              "✅ Siliconflow API 密钥有效。",
-              `💰 余额信息：`,
-              `- 总余额：${data.totalBalance} CNY`,
-              `- 充值余额：${data.chargeBalance} CNY`,
-              `- 赠送余额：${data.balance} CNY`
-            );
-            await saveValidKey("siliconflow", siliconflowKey);
-          } else {
-            results.push(
-              `❌ Siliconflow 用户信息查询失败：${userInfo.message}`
-            );
-          }
+        if (completionResponse.ok) {
+          results.push("✅ Siliconflow API 密钥有效。");
+          await saveValidKey("siliconflow", siliconflowKey);
         } else {
           if (!completionResponse.ok) {
             const errorData = await completionResponse.json();
             results.push(
               `❌ Siliconflow API 错误：${
                 errorData.error?.message || "未知错误"
-              }`
-            );
-          }
-          if (!userInfoResponse.ok) {
-            const userInfoError = await userInfoResponse.json();
-            results.push(
-              `❌ Siliconflow 用户信息查询错误：${
-                userInfoError.message || "未知错误"
               }`
             );
           }
@@ -324,65 +273,25 @@ document
           : customEndpoint + "/v1/";
 
         // 并行发送请求：API 可用性检测、额度查询和使用情况查询
-        const [completionResponse, quotaResponse, usageResponse] =
-          await Promise.all([
-            // 原有的 API 可用性检测
-            fetch(`${processedEndpoint}chat/completions`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${customApiKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: selectedModel,
-                messages: [{ role: "user", content: "Hi" }],
-                max_tokens: 10,
-              }),
+        const [completionResponse] = await Promise.all([
+          // 原有的 API 可用性检测
+          fetch(`${processedEndpoint}chat/completions`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${customApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: selectedModel,
+              messages: [{ role: "user", content: "Hi" }],
+              max_tokens: 10,
             }),
-            // 额度查询
-            fetch(`${customEndpoint}/dashboard/billing/subscription`, {
-              headers: {
-                Authorization: `Bearer ${customApiKey}`,
-              },
-            }),
-            // 使用情况查询
-            fetch(
-              `${customEndpoint}/dashboard/billing/usage?start_date=${getStartDate()}&end_date=${getEndDate()}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${customApiKey}`,
-                },
-              }
-            ),
-          ]);
+          }),
+        ]);
 
         if (completionResponse.ok) {
           results.push("✅ 自定义 OpenAI 兼容接口可用。");
           await saveValidKey("custom", customApiKey, customEndpoint);
-
-          // 处理额度信息
-          if (quotaResponse.ok && usageResponse.ok) {
-            const quotaData = await quotaResponse.json();
-            const usageData = await usageResponse.json();
-
-            const quotaInfo = quotaData.hard_limit_usd
-              ? `${quotaData.hard_limit_usd.toFixed(2)} $`
-              : "无法获取";
-            const usedInfo = `${(usageData.total_usage / 100).toFixed(2)} $`;
-            const remainInfo = quotaData.hard_limit_usd
-              ? `${(
-                  quotaData.hard_limit_usd -
-                  usageData.total_usage / 100
-                ).toFixed(2)} $`
-              : "无法计算";
-
-            results.push(
-              `💰 额度信息：`,
-              `- 总额度：${quotaInfo}`,
-              `- 已用额度：${usedInfo}`,
-              `- 剩余额度：${remainInfo}`
-            );
-          }
         } else {
           const errorData = await completionResponse.json();
           results.push(
@@ -392,23 +301,6 @@ document
       } catch (error) {
         results.push(`❌ 自定义接口错误：${error.message}`);
       }
-    }
-
-    // 辅助函数：获当月开始日期
-    function getStartDate() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, "0");
-      return `${year}-${month}-01`;
-    }
-
-    // 辅助函数：获取当前日期
-    function getEndDate() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, "0");
-      const day = String(today.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
     }
 
     // 如果没有输入任何 API 密钥
@@ -662,21 +554,25 @@ document.getElementById("testModelsBtn").addEventListener("click", async () => {
   resultDiv.innerHTML = tableHTML;
 
   // 添加复制按钮的事件监听
-  document.getElementById("copyAvailableModels").addEventListener("click", function() {
-    const availableModels = results
-      .filter(result => result.status === "✅")
-      .map(result => result.model);
-    
-    copyToClipboard(availableModels.join(","), this);
-  });
+  document
+    .getElementById("copyAvailableModels")
+    .addEventListener("click", function () {
+      const availableModels = results
+        .filter((result) => result.status === "✅")
+        .map((result) => result.model);
 
-  document.getElementById("copyMatchedModels").addEventListener("click", function() {
-    const matchedModels = results
-      .filter(result => result.modelMatch === "✅")
-      .map(result => result.model);
-    
-    copyToClipboard(matchedModels.join(","), this);
-  });
+      copyToClipboard(availableModels.join(","), this);
+    });
+
+  document
+    .getElementById("copyMatchedModels")
+    .addEventListener("click", function () {
+      const matchedModels = results
+        .filter((result) => result.modelMatch === "✅")
+        .map((result) => result.model);
+
+      copyToClipboard(matchedModels.join(","), this);
+    });
 });
 
 // 添加复制到剪贴板的辅助函数
@@ -685,11 +581,11 @@ async function copyToClipboard(text, button) {
     await navigator.clipboard.writeText(text);
     const originalText = button.innerHTML;
     button.innerHTML = "已复制!";
-    setTimeout(() => button.innerHTML = originalText, 1000);
+    setTimeout(() => (button.innerHTML = originalText), 1000);
   } catch (err) {
     console.error("复制失败:", err);
     button.innerHTML = "复制失败!";
-    setTimeout(() => button.innerHTML = originalText, 1000);
+    setTimeout(() => (button.innerHTML = originalText), 1000);
   }
 }
 
@@ -1042,47 +938,49 @@ async function saveValidKey(platform, key, endpoint = "") {
 }
 
 // 修改历史记录按钮的点击事件处理
-document.getElementById("historyButton").addEventListener("click", async function () {
-  const historyDiv = document.getElementById("history");
-  
-  // 检查是否已经显示历史记录
-  const existingHistory = historyDiv.querySelector(".history-container");
-  if (existingHistory) {
-    historyDiv.innerHTML = "";
-    return;
-  }
+document
+  .getElementById("historyButton")
+  .addEventListener("click", async function () {
+    const historyDiv = document.getElementById("history");
 
-  const ITEMS_PER_PAGE = 5;
-  let currentPage = 1;
-
-  const platformNames = {
-    openai: "OpenAI",
-    claude: "Claude",
-    gemini: "Gemini",
-    deepseek: "Deepseek",
-    groq: "Groq",
-    siliconflow: "Siliconflow",
-    xai: "xAI",
-    custom: "自定义接口",
-  };
-
-  try {
-    const history = await chrome.storage.local.get("validKeys");
-    let validKeys = history.validKeys || [];
-
-    if (validKeys.length === 0) {
-      historyDiv.innerHTML = "暂无历史记录";
+    // 检查是否已经显示历史记录
+    const existingHistory = historyDiv.querySelector(".history-container");
+    if (existingHistory) {
+      historyDiv.innerHTML = "";
       return;
     }
 
-    // 获取所有唯一的endpoint和platform
-    const endpoints = [
-      ...new Set(validKeys.filter((k) => k.endpoint).map((k) => k.endpoint)),
-    ];
-    const platforms = [...new Set(validKeys.map((k) => k.platform))];
+    const ITEMS_PER_PAGE = 5;
+    let currentPage = 1;
 
-    // 创建筛选器HTML
-    const filterHtml = `
+    const platformNames = {
+      openai: "OpenAI",
+      claude: "Claude",
+      gemini: "Gemini",
+      deepseek: "Deepseek",
+      groq: "Groq",
+      siliconflow: "Siliconflow",
+      xai: "xAI",
+      custom: "自定义接口",
+    };
+
+    try {
+      const history = await chrome.storage.local.get("validKeys");
+      let validKeys = history.validKeys || [];
+
+      if (validKeys.length === 0) {
+        historyDiv.innerHTML = "暂无历史记录";
+        return;
+      }
+
+      // 获取所有唯一的endpoint和platform
+      const endpoints = [
+        ...new Set(validKeys.filter((k) => k.endpoint).map((k) => k.endpoint)),
+      ];
+      const platforms = [...new Set(validKeys.map((k) => k.platform))];
+
+      // 创建筛选器HTML
+      const filterHtml = `
     <div class="history-filters">
       <div class="filter-group">
         <label for="endpointFilter">接口筛选：</label>
@@ -1112,33 +1010,33 @@ document.getElementById("historyButton").addEventListener("click", async functio
     </div>
   `;
 
-    function filterKeys(endpoint, platform) {
-      return validKeys.filter((key) => {
-        const endpointMatch = !endpoint || key.endpoint === endpoint;
-        const platformMatch = !platform || key.platform === platform;
-        return endpointMatch && platformMatch;
-      });
-    }
+      function filterKeys(endpoint, platform) {
+        return validKeys.filter((key) => {
+          const endpointMatch = !endpoint || key.endpoint === endpoint;
+          const platformMatch = !platform || key.platform === platform;
+          return endpointMatch && platformMatch;
+        });
+      }
 
-    function renderPage(page, filteredKeys = validKeys) {
-      const startIndex = (page - 1) * ITEMS_PER_PAGE;
-      const endIndex = startIndex + ITEMS_PER_PAGE;
-      const pageItems = filteredKeys.slice(startIndex, endIndex);
-      const totalPages = Math.ceil(filteredKeys.length / ITEMS_PER_PAGE);
+      function renderPage(page, filteredKeys = validKeys) {
+        const startIndex = (page - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const pageItems = filteredKeys.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(filteredKeys.length / ITEMS_PER_PAGE);
 
-      const historyHtml = pageItems
-        .map((item, index) => {
-          const date = new Date(item.timestamp).toLocaleString("zh-CN");
-          const keyPreview = `${item.key.slice(0, 8)}...${item.key.slice(
-            -8
-          )}`;
-          const platformName = platformNames[item.platform] || item.platform;
-          const absoluteIndex = startIndex + index;
+        const historyHtml = pageItems
+          .map((item, index) => {
+            const date = new Date(item.timestamp).toLocaleString("zh-CN");
+            const keyPreview = `${item.key.slice(0, 8)}...${item.key.slice(
+              -8
+            )}`;
+            const platformName = platformNames[item.platform] || item.platform;
+            const absoluteIndex = startIndex + index;
 
-          return `
+            return `
           <div class="history-item" data-key="${item.key}" data-platform="${
-            item.platform
-          }" ${item.endpoint ? `data-endpoint="${item.endpoint}"` : ""}>
+              item.platform
+            }" ${item.endpoint ? `data-endpoint="${item.endpoint}"` : ""}>
             <div class="history-platform">${platformName}</div>
             <div class="history-key">${keyPreview}</div>
             <div class="history-time">${date}</div>
@@ -1149,76 +1047,76 @@ document.getElementById("historyButton").addEventListener("click", async functio
             </div>
           </div>
         `;
-        })
-        .join("");
+          })
+          .join("");
 
-      // 修改分页按钮生成逻辑
-      function generatePaginationButtons(currentPage, totalPages) {
-        const buttons = [];
-        const maxVisibleButtons = 5; // 最多显示的按钮数量
+        // 修改分页按钮生成逻辑
+        function generatePaginationButtons(currentPage, totalPages) {
+          const buttons = [];
+          const maxVisibleButtons = 5; // 最多显示的按钮数量
 
-        if (totalPages <= maxVisibleButtons) {
-          // 如果总页数小于等于最大显示数，显示所有页码
-          for (let i = 1; i <= totalPages; i++) {
+          if (totalPages <= maxVisibleButtons) {
+            // 如果总页数小于等于最大显示数，显示所有页码
+            for (let i = 1; i <= totalPages; i++) {
+              buttons.push(
+                `<button class="${
+                  i === currentPage ? "active" : ""
+                }" data-page="${i}">${i}</button>`
+              );
+            }
+          } else {
+            // 总是显示第一页
             buttons.push(
               `<button class="${
-                i === currentPage ? "active" : ""
-              }" data-page="${i}">${i}</button>`
+                1 === currentPage ? "active" : ""
+              }" data-page="1">1</button>`
             );
-          }
-        } else {
-          // 总是显示第一页
-          buttons.push(
-            `<button class="${
-              1 === currentPage ? "active" : ""
-            }" data-page="1">1</button>`
-          );
 
-          // 计算中间页码的起始和结束
-          let start = Math.max(2, currentPage - 1);
-          let end = Math.min(totalPages - 1, currentPage + 1);
+            // 计算中间页码的起始和结束
+            let start = Math.max(2, currentPage - 1);
+            let end = Math.min(totalPages - 1, currentPage + 1);
 
-          // 如果当前页靠近开始
-          if (currentPage <= 3) {
-            end = 4;
-          }
-          // 如果当前页靠近结束
-          if (currentPage >= totalPages - 2) {
-            start = totalPages - 3;
-          }
+            // 如果当前页靠近开始
+            if (currentPage <= 3) {
+              end = 4;
+            }
+            // 如果当前页靠近结束
+            if (currentPage >= totalPages - 2) {
+              start = totalPages - 3;
+            }
 
-          // 添加开始的省略号
-          if (start > 2) {
-            buttons.push("<span>...</span>");
-          }
+            // 添加开始的省略号
+            if (start > 2) {
+              buttons.push("<span>...</span>");
+            }
 
-          // 添加中间的页码
-          for (let i = start; i <= end; i++) {
+            // 添加中间的页码
+            for (let i = start; i <= end; i++) {
+              buttons.push(
+                `<button class="${
+                  i === currentPage ? "active" : ""
+                }" data-page="${i}">${i}</button>`
+              );
+            }
+
+            // 添加结束的省略号
+            if (end < totalPages - 1) {
+              buttons.push("<span>...</span>");
+            }
+
+            // 总是显示最后一页
             buttons.push(
               `<button class="${
-                i === currentPage ? "active" : ""
-              }" data-page="${i}">${i}</button>`
+                totalPages === currentPage ? "active" : ""
+              }" data-page="${totalPages}">${totalPages}</button>`
             );
           }
 
-          // 添加结束的省略号
-          if (end < totalPages - 1) {
-            buttons.push("<span>...</span>");
-          }
-
-          // 总是显示最后一页
-          buttons.push(
-            `<button class="${
-              totalPages === currentPage ? "active" : ""
-            }" data-page="${totalPages}">${totalPages}</button>`
-          );
+          return buttons.join("");
         }
 
-        return buttons.join("");
-      }
-
-      // 生成分页HTML
-      const paginationHtml = `
+        // 生成分页HTML
+        const paginationHtml = `
       <div class="pagination">
         <button ${page === 1 ? "disabled" : ""} id="prevPage">上一页</button>
         ${generatePaginationButtons(page, totalPages)}
@@ -1228,7 +1126,7 @@ document.getElementById("historyButton").addEventListener("click", async functio
       </div>
     `;
 
-      historyDiv.innerHTML = `
+        historyDiv.innerHTML = `
       <div class="history-container">
         <div class="history-header">
           <h3>历史有效密钥</h3>
@@ -1243,156 +1141,156 @@ document.getElementById("historyButton").addEventListener("click", async functio
       </div>
     `;
 
-      // 添加筛选器事件监听
-      const endpointFilter = document.getElementById("endpointFilter");
-      const platformFilter = document.getElementById("platformFilter");
+        // 添加筛选器事件监听
+        const endpointFilter = document.getElementById("endpointFilter");
+        const platformFilter = document.getElementById("platformFilter");
 
-      endpointFilter.addEventListener("change", () => {
-        const filteredKeys = filterKeys(
-          endpointFilter.value,
-          platformFilter.value
-        );
-        currentPage = 1;
-        renderPage(currentPage, filteredKeys);
-      });
+        endpointFilter.addEventListener("change", () => {
+          const filteredKeys = filterKeys(
+            endpointFilter.value,
+            platformFilter.value
+          );
+          currentPage = 1;
+          renderPage(currentPage, filteredKeys);
+        });
 
-      platformFilter.addEventListener("change", () => {
-        const filteredKeys = filterKeys(
-          endpointFilter.value,
-          platformFilter.value
-        );
-        currentPage = 1;
-        renderPage(currentPage, filteredKeys);
-      });
+        platformFilter.addEventListener("change", () => {
+          const filteredKeys = filterKeys(
+            endpointFilter.value,
+            platformFilter.value
+          );
+          currentPage = 1;
+          renderPage(currentPage, filteredKeys);
+        });
 
-      // 添加分页事件监听
-      document
-        .querySelectorAll(".pagination button[data-page]")
-        .forEach((btn) => {
-          btn.addEventListener("click", () => {
-            currentPage = parseInt(btn.dataset.page);
-            renderPage(currentPage);
+        // 添加分页事件监听
+        document
+          .querySelectorAll(".pagination button[data-page]")
+          .forEach((btn) => {
+            btn.addEventListener("click", () => {
+              currentPage = parseInt(btn.dataset.page);
+              renderPage(currentPage);
+            });
           });
-        });
 
-      document.getElementById("prevPage")?.addEventListener("click", () => {
-        if (currentPage > 1) {
-          currentPage--;
-          renderPage(currentPage);
-        }
-      });
-
-      document.getElementById("nextPage")?.addEventListener("click", () => {
-        if (currentPage < totalPages) {
-          currentPage++;
-          renderPage(currentPage);
-        }
-      });
-
-      // 添加复制单个密钥的按钮事件
-      document.querySelectorAll(".history-item").forEach((item) => {
-        const key = item.dataset.key;
-        const platform = item.dataset.platform;
-        const endpoint = item.dataset.endpoint;
-
-        const actionsDiv = item.querySelector(".history-actions");
-        const copyBtn = actionsDiv.querySelector(".copy-key-btn");
-
-        copyBtn.addEventListener("click", async () => {
-          try {
-            // 构建包含平台信息和endpoint的复制文本
-            let copyText = `Platform: ${platform}\nKey: ${key}`;
-            if (endpoint) {
-              copyText += `\nEndpoint: ${endpoint}`;
-            }
-
-            await navigator.clipboard.writeText(copyText);
-            const originalText = copyBtn.textContent;
-            copyBtn.textContent = "已复制!";
-            setTimeout(() => (copyBtn.textContent = originalText), 1000);
-          } catch (err) {
-            console.error("复制失败:", err);
+        document.getElementById("prevPage")?.addEventListener("click", () => {
+          if (currentPage > 1) {
+            currentPage--;
+            renderPage(currentPage);
           }
         });
 
-        actionsDiv.insertBefore(copyBtn, actionsDiv.firstChild);
-      });
-
-      // 添加复制所有密钥的功能
-      document
-        .getElementById("copyAllKeysBtn")
-        .addEventListener("click", async function () {
-          try {
-            const keysText = validKeys
-              .map((item) => {
-                let text = `${item.platform}: ${item.key}`;
-                if (item.endpoint) {
-                  text += `\nEndpoint: ${item.endpoint}`;
-                }
-                return text;
-              })
-              .join("\n\n");
-
-            await navigator.clipboard.writeText(keysText);
-            this.textContent = "已复制!";
-            setTimeout(() => (this.textContent = "复制全部"), 1000);
-          } catch (err) {
-            console.error("复制失败:", err);
+        document.getElementById("nextPage")?.addEventListener("click", () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            renderPage(currentPage);
           }
         });
 
-      // 添加使用按钮的点击事件
-      document.querySelectorAll(".use-key-btn").forEach((btn) => {
-        btn.addEventListener("click", function () {
-          const item = this.closest(".history-item");
+        // 添加复制单个密钥的按钮事件
+        document.querySelectorAll(".history-item").forEach((item) => {
           const key = item.dataset.key;
           const platform = item.dataset.platform;
           const endpoint = item.dataset.endpoint;
 
-          // 填对应的输入框
-          if (platform === "custom") {
-            document.getElementById("customApiKey").value = key;
-            document.getElementById("customEndpoint").value = endpoint;
-            // 手动触发模型列表更新
-            handleModelListUpdate();
-          } else {
-            document.getElementById(`${platform}Key`).value = key;
-          }
+          const actionsDiv = item.querySelector(".history-actions");
+          const copyBtn = actionsDiv.querySelector(".copy-key-btn");
+
+          copyBtn.addEventListener("click", async () => {
+            try {
+              // 构建包含平台信息和endpoint的复制文本
+              let copyText = `Platform: ${platform}\nKey: ${key}`;
+              if (endpoint) {
+                copyText += `\nEndpoint: ${endpoint}`;
+              }
+
+              await navigator.clipboard.writeText(copyText);
+              const originalText = copyBtn.textContent;
+              copyBtn.textContent = "已复制!";
+              setTimeout(() => (copyBtn.textContent = originalText), 1000);
+            } catch (err) {
+              console.error("复制失败:", err);
+            }
+          });
+
+          actionsDiv.insertBefore(copyBtn, actionsDiv.firstChild);
         });
-      });
 
-      // 添加删除按钮的点击事件
-      document.querySelectorAll(".delete-key-btn").forEach((btn) => {
-        btn.addEventListener("click", async function () {
-          const index = parseInt(this.dataset.index);
-          const history = await chrome.storage.local.get("validKeys");
-          const validKeys = history.validKeys || [];
+        // 添加复制所有密钥的功能
+        document
+          .getElementById("copyAllKeysBtn")
+          .addEventListener("click", async function () {
+            try {
+              const keysText = validKeys
+                .map((item) => {
+                  let text = `${item.platform}: ${item.key}`;
+                  if (item.endpoint) {
+                    text += `\nEndpoint: ${item.endpoint}`;
+                  }
+                  return text;
+                })
+                .join("\n\n");
 
-          validKeys.splice(index, 1);
-          await chrome.storage.local.set({ validKeys });
+              await navigator.clipboard.writeText(keysText);
+              this.textContent = "已复制!";
+              setTimeout(() => (this.textContent = "复制全部"), 1000);
+            } catch (err) {
+              console.error("复制失败:", err);
+            }
+          });
 
-          // 重新加载历史记录
-          document.getElementById("historyButton").click();
+        // 添加使用按钮的点击事件
+        document.querySelectorAll(".use-key-btn").forEach((btn) => {
+          btn.addEventListener("click", function () {
+            const item = this.closest(".history-item");
+            const key = item.dataset.key;
+            const platform = item.dataset.platform;
+            const endpoint = item.dataset.endpoint;
+
+            // 填对应的输入框
+            if (platform === "custom") {
+              document.getElementById("customApiKey").value = key;
+              document.getElementById("customEndpoint").value = endpoint;
+              // 手动触发模型列表更新
+              handleModelListUpdate();
+            } else {
+              document.getElementById(`${platform}Key`).value = key;
+            }
+          });
         });
-      });
 
-      // 添加清空历史的点击事件
-      document
-        .getElementById("clearHistoryBtn")
-        .addEventListener("click", async function () {
-          if (confirm("确定要清空所有历史记录吗？")) {
-            await chrome.storage.local.set({ validKeys: [] });
-            historyDiv.innerHTML = "暂无历史记录";
-          }
+        // 添加删除按钮的点击事件
+        document.querySelectorAll(".delete-key-btn").forEach((btn) => {
+          btn.addEventListener("click", async function () {
+            const index = parseInt(this.dataset.index);
+            const history = await chrome.storage.local.get("validKeys");
+            const validKeys = history.validKeys || [];
+
+            validKeys.splice(index, 1);
+            await chrome.storage.local.set({ validKeys });
+
+            // 重新加载历史记录
+            document.getElementById("historyButton").click();
+          });
         });
+
+        // 添加清空历史的点击事件
+        document
+          .getElementById("clearHistoryBtn")
+          .addEventListener("click", async function () {
+            if (confirm("确定要清空所有历史记录吗？")) {
+              await chrome.storage.local.set({ validKeys: [] });
+              historyDiv.innerHTML = "暂无历史记录";
+            }
+          });
+      }
+
+      // 初始渲染第一页
+      renderPage(currentPage);
+    } catch (error) {
+      historyDiv.innerHTML = `获取历史记录失败：${error.message}`;
     }
-
-    // 初始渲染第一页
-    renderPage(currentPage);
-  } catch (error) {
-    historyDiv.innerHTML = `获取历史记录失败：${error.message}`;
-  }
-});
+  });
 
 // 添加导航菜单控制逻辑
 document.addEventListener("DOMContentLoaded", function () {
@@ -1493,3 +1391,186 @@ async function testModels(endpoint, apiKey, selectedModels) {
   return results;
 }
 
+// 添加余额查询按钮的事件监听
+document
+  .getElementById("checkBalanceBtn")
+  .addEventListener("click", async function () {
+    const openaiKey = document.getElementById("openaiKey").value.trim();
+    const claudeKey = document.getElementById("claudeKey").value.trim();
+    const geminiKey = document.getElementById("geminiKey").value.trim();
+    const deepseekKey = document.getElementById("deepseekKey").value.trim();
+    const groqKey = document.getElementById("groqKey").value.trim();
+    const siliconflowKey = document
+      .getElementById("siliconflowKey")
+      .value.trim();
+    const xaiKey = document.getElementById("xaiKey").value.trim();
+    const customEndpoint = document.getElementById("customEndpoint").value.trim();
+    const customApiKey = document.getElementById("customApiKey").value.trim();
+
+    const results = [];
+
+    // 添加不支持平台的提示
+    if (claudeKey) {
+      results.push("❌ Claude 暂不支持余额查询");
+    }
+    
+    if (geminiKey) {
+      results.push("❌ Gemini 暂不支持余额查询");
+    }
+
+    if (groqKey) {
+      results.push("❌ Groq 暂不支持余额查询");
+    }
+
+    if (xaiKey) {
+      results.push("❌ xAI 暂不支持余额查询"); 
+    }
+
+    // 辅助函数：获当月开始日期
+    function getStartDate() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      return `${year}-${month}-01`;
+    }
+
+    // 辅助函数：获取当前日期
+    function getEndDate() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    // Deepseek 余额查询
+    if (deepseekKey) {
+      try {
+        const balanceResponse = await fetch(
+          "https://api.deepseek.com/user/balance",
+          {
+            headers: {
+              Authorization: `Bearer ${deepseekKey}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        if (balanceResponse.ok) {
+          const balanceData = await balanceResponse.json();
+          const balanceInfo = balanceData.balance_infos[0];
+          results.push(
+            `💰 Deepseek 余额信息：`,
+            `- 总余额：${balanceInfo.total_balance} ${balanceInfo.currency}`,
+            `- 赠送余额：${balanceInfo.granted_balance} ${balanceInfo.currency}`,
+            `- 充值余额：${balanceInfo.topped_up_balance} ${balanceInfo.currency}`
+          );
+        } else {
+          const balanceError = await balanceResponse.json();
+          results.push(
+            `❌ Deepseek 余额查询错误：${
+              balanceError.error?.message || "未知错误"
+            }`
+          );
+        }
+      } catch (error) {
+        results.push(`❌ Deepseek 余额查询错误：${error.message}`);
+      }
+    }
+
+    // Siliconflow 余额查询
+    if (siliconflowKey) {
+      try {
+        const userInfoResponse = await fetch(
+          "https://api.siliconflow.cn/v1/user/info",
+          {
+            headers: {
+              Authorization: `Bearer ${siliconflowKey}`,
+            },
+          }
+        );
+        if (userInfoResponse.ok) {
+          const userInfo = await userInfoResponse.json();
+          if (userInfo.status && userInfo.code === 20000) {
+            const data = userInfo.data;
+            results.push(
+              `💰 Siliconflow 余额信息：`,
+              `- 总余额：${data.totalBalance} CNY`,
+              `- 充值余额：${data.chargeBalance} CNY`,
+              `- 赠送余额：${data.balance} CNY`
+            );
+          } else {
+            results.push(
+              `❌ Siliconflow 用户信息查询失败：${userInfo.message}`
+            );
+          }
+        } else {
+          const userInfoError = await userInfoResponse.json();
+          results.push(
+            `❌ Siliconflow 用户信息查询错误：${
+              userInfoError.message || "未知错误"
+            }`
+          );
+        }
+      } catch (error) {
+        results.push(`❌ Siliconflow 余额查询错误：${error.message}`);
+      }
+    }
+
+    // 自定义 OpenAI 兼容接口的额度查询
+    if (customEndpoint && customApiKey) {
+      try {
+        const quotaResponse = await fetch(
+          `${customEndpoint}/dashboard/billing/subscription`,
+          {
+            headers: {
+              Authorization: `Bearer ${customApiKey}`,
+            },
+          }
+        );
+        const usageResponse = await fetch(
+          `${customEndpoint}/dashboard/billing/usage?start_date=${getStartDate()}&end_date=${getEndDate()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${customApiKey}`,
+            },
+          }
+        );
+
+        if (quotaResponse.ok && usageResponse.ok) {
+          const quotaData = await quotaResponse.json();
+          const usageData = await usageResponse.json();
+
+          const quotaInfo = quotaData.hard_limit_usd
+            ? `${quotaData.hard_limit_usd.toFixed(2)} $`
+            : "无法获取";
+          const usedInfo = `${(usageData.total_usage / 100).toFixed(2)} $`;
+          const remainInfo = quotaData.hard_limit_usd
+            ? `${(
+                quotaData.hard_limit_usd -
+                usageData.total_usage / 100
+              ).toFixed(2)} $`
+            : "无法计算";
+
+          results.push(
+            `💰 自定义接口额度信息：`,
+            `- 总额度：${quotaInfo}`,
+            `- 已用额度：${usedInfo}`,
+            `- 剩余额度：${remainInfo}`
+          );
+        } else {
+          const errorData = await quotaResponse.json();
+          results.push(
+            `❌ 自定义接口额度查询错误：${
+              errorData.error?.message || "未知错误"
+            }`
+          );
+        }
+      } catch (error) {
+        results.push(`❌ 自定义接口额度查询错误：${error.message}`);
+      }
+    }
+
+    // 更新结果显示
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = results.join("<br />");
+  });
