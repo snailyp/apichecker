@@ -1410,6 +1410,10 @@ document
     const results = [];
 
     // 添加不支持平台的提示
+    if (openaiKey) {
+      results.push("❌ OpenAI 暂不支持余额查询");
+    }
+
     if (claudeKey) {
       results.push("❌ Claude 暂不支持余额查询");
     }
