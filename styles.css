@@ -327,7 +327,10 @@ html {
 
 .history-item {
   display: grid;
-  grid-template-columns: minmax(80px, auto) minmax(120px, 1fr) minmax(120px, auto) minmax(160px, auto);
+  grid-template-columns: minmax(80px, auto) minmax(120px, 1fr) minmax(
+      120px,
+      auto
+    ) minmax(160px, auto);
   gap: 8px;
   align-items: center;
   padding: 8px;
@@ -710,8 +713,12 @@ html {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .history-filters {
@@ -887,4 +894,62 @@ html {
 
 .test-models-btn:hover {
   background-color: #1557b0;
+}
+
+/* 添加模型测试结果容器样式 */
+.model-test-results {
+  margin-top: 20px;
+}
+
+.model-copy-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.copy-result-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #1a73e8;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin: 0;
+  flex: 1;
+  max-width: 200px;
+}
+
+.copy-result-btn:hover {
+  background-color: #1557b0;
+}
+
+.copy-result-btn span {
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.copy-result-btn small {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* 确保表格在按钮下方正确显示 */
+.model-test-results > div:last-child {
+  margin-top: 10px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.test-results-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1a73e8;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e8f0fe;
 }

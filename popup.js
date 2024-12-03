@@ -610,44 +610,88 @@ document.getElementById("testModelsBtn").addEventListener("click", async () => {
 
   const results = await testModels(endpoint, apiKey, selectedModels);
 
-  // 生成结果表格
+  // 生成按钮和表格的HTML
   const tableHTML = `
-    <div style="overflow-x: auto;">
-      <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-        <thead>
-          <tr>
-            <th style="min-width: 120px; white-space: nowrap;">请求模型</th>
-            <th style="min-width: 60px; white-space: nowrap;">状态</th>
-            <th style="min-width: 100px; white-space: nowrap;">响应时间</th>
-            <th style="min-width: 120px; white-space: nowrap;">返回模型</th>
-            <th style="min-width: 80px; white-space: nowrap;">模型匹配</th>
-            <th style="min-width: 80px; white-space: nowrap;">Token数</th>
-            <th style="min-width: 200px; white-space: nowrap;">错误信息</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${results
-            .map(
-              (result) => `
+    <div class="model-test-results">
+      <h3 class="test-results-title">模型测试结果</h3>
+      <div class="model-copy-buttons">
+        <button id="copyAvailableModels" class="copy-result-btn">
+          <span>复制可用模型</span>
+          <small>(✅状态)</small>
+        </button>
+        <button id="copyMatchedModels" class="copy-result-btn">
+          <span>复制匹配模型</span>
+          <small>(✅模型匹配)</small>
+        </button>
+      </div>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+          <thead>
             <tr>
-              <td>${result.model}</td>
-              <td>${result.status}</td>
-              <td>${result.responseTime}ms</td>
-              <td>${result.returnedModel || "-"}</td>
-              <td>${result.modelMatch || "-"}</td>
-              <td>${result.tokens || "-"}</td>
-              <td>${result.error || "-"}</td>
+              <th>请求模型</th>
+              <th>状态</th>
+              <th>响应时间</th>
+              <th>返回模型</th>
+              <th>模型匹配</th>
+              <th>Token数</th>
+              <th>错误信息</th>
             </tr>
-          `
-            )
-            .join("")}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            ${results
+              .map(
+                (result) => `
+              <tr>
+                <td>${result.model}</td>
+                <td>${result.status}</td>
+                <td>${result.responseTime}ms</td>
+                <td>${result.returnedModel || "-"}</td>
+                <td>${result.modelMatch || "-"}</td>
+                <td>${result.tokens || "-"}</td>
+                <td>${result.error || "-"}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 
   resultDiv.innerHTML = tableHTML;
+
+  // 添加复制按钮的事件监听
+  document.getElementById("copyAvailableModels").addEventListener("click", function() {
+    const availableModels = results
+      .filter(result => result.status === "✅")
+      .map(result => result.model);
+    
+    copyToClipboard(availableModels.join(","), this);
+  });
+
+  document.getElementById("copyMatchedModels").addEventListener("click", function() {
+    const matchedModels = results
+      .filter(result => result.modelMatch === "✅")
+      .map(result => result.model);
+    
+    copyToClipboard(matchedModels.join(","), this);
+  });
 });
+
+// 添加复制到剪贴板的辅助函数
+async function copyToClipboard(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const originalText = button.innerHTML;
+    button.innerHTML = "已复制!";
+    setTimeout(() => button.innerHTML = originalText, 1000);
+  } catch (err) {
+    console.error("复制失败:", err);
+    button.innerHTML = "复制失败!";
+    setTimeout(() => button.innerHTML = originalText, 1000);
+  }
+}
 
 // 处理模型列表更新的函数
 function handleModelListUpdate() {
