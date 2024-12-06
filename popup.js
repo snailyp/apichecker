@@ -303,13 +303,12 @@ document
 
         // 检查是否已经显示历史记录
         const existingHistory = historyDiv.querySelector(".history-container");
-        
+
         // 重新渲染历史面板
         if (existingHistory) {
           document.getElementById("historyButton").click();
           document.getElementById("historyButton").click();
         }
-
       } catch (error) {
         results.push(`❌ 自定义接口错误：${error.message}`);
       }
@@ -511,8 +510,6 @@ document.getElementById("testModelsBtn").addEventListener("click", async () => {
   const resultDiv = document.getElementById("result");
   resultDiv.innerHTML = "正在测试选中的模型，请稍候...";
 
-  const results = await testModels(endpoint, apiKey, selectedModels);
-
   // 生成按钮和表格的HTML
   const tableHTML = `
     <div class="model-test-results">
@@ -541,28 +538,37 @@ document.getElementById("testModelsBtn").addEventListener("click", async () => {
             </tr>
           </thead>
           <tbody>
-            ${results
-              .map(
-                (result) => `
-              <tr>
-                <td>${result.model}</td>
-                <td>${result.status}</td>
-                <td>${result.responseTime}ms</td>
-                <td>${result.returnedModel || "-"}</td>
-                <td>${result.modelMatch || "-"}</td>
-                <td>${result.tokens || "-"}</td>
-                <td>${result.error || "-"}</td>
-              </tr>
-            `
-              )
-              .join("")}
+            {{data}}
           </tbody>
         </table>
       </div>
     </div>
   `;
-
-  resultDiv.innerHTML = tableHTML;
+  const results = [];
+  let tableHTMLString = "";
+  for (const selectedModel of selectedModels) {
+    const result = await testModel(endpoint, apiKey, selectedModel);
+    results.push(result);
+    tableHTMLString = tableHTML.replace(
+      "{{data}}",
+      results
+        .map(
+          (result) => `
+          <tr>
+            <td>${result.model}</td>
+            <td>${result.status}</td>
+            <td>${result.responseTime}ms</td>
+            <td>${result.returnedModel || "-"}</td>
+            <td>${result.modelMatch || "-"}</td>
+            <td>${result.tokens || "-"}</td>
+            <td>${result.error || "-"}</td>
+          </tr>
+        `
+        )
+        .join("")
+    );
+    resultDiv.innerHTML = tableHTMLString;
+  }
 
   // 添加复制按钮的事件监听
   document
@@ -1349,70 +1355,65 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
-// 多模型检测功能
-async function testModels(endpoint, apiKey, selectedModels) {
-  const results = [];
+// 模型检测功能
+async function testModel(endpoint, apiKey, model) {
   const processedEndpoint = endpoint.endsWith("/")
     ? endpoint
     : endpoint + "/v1/";
 
-  for (const model of selectedModels) {
-    try {
-      const startTime = performance.now();
-      const response = await fetch(`${processedEndpoint}chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [{ role: "user", content: "Hi" }],
-          max_tokens: 10,
-        }),
-      });
+  try {
+    const startTime = performance.now();
+    const response = await fetch(`${processedEndpoint}chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: "user", content: "Hi" }],
+        max_tokens: 10,
+      }),
+    });
 
-      const endTime = performance.now();
-      const responseTime = (endTime - startTime).toFixed(2);
+    const endTime = performance.now();
+    const responseTime = (endTime - startTime).toFixed(2);
 
-      if (response.ok) {
-        const data = await response.json();
-        const modelMatch = data.model === model;
+    if (response.ok) {
+      const data = await response.json();
+      const modelMatch = data.model === model;
 
-        results.push({
-          model,
-          status: "✅",
-          responseTime,
-          returnedModel: data.model,
-          modelMatch: modelMatch ? "✅" : "❌",
-          tokens: data.usage?.total_tokens || "-",
-        });
-      } else {
-        const errorData = await response.json();
-        results.push({
-          model,
-          status: "❌",
-          responseTime,
-          returnedModel: "-",
-          modelMatch: "-",
-          tokens: "-",
-          error: errorData.error?.message || "未知错误",
-        });
-      }
-    } catch (error) {
-      results.push({
+      return {
+        model,
+        status: "✅",
+        responseTime,
+        returnedModel: data.model,
+        modelMatch: modelMatch ? "✅" : "❌",
+        tokens: data.usage?.total_tokens || "-",
+      };
+    } else {
+      const errorData = await response.json();
+      return {
         model,
         status: "❌",
-        responseTime: "-",
+        responseTime,
         returnedModel: "-",
         modelMatch: "-",
         tokens: "-",
-        error: error.message,
-      });
+        error: errorData.error?.message || "未知错误",
+      };
     }
+  } catch (error) {
+    return {
+      model,
+      status: "❌",
+      responseTime: "-",
+      returnedModel: "-",
+      modelMatch: "-",
+      tokens: "-",
+      error: error.message,
+    };
   }
-
-  return results;
 }
 
 // 添加余额查询按钮的事件监听
@@ -1428,7 +1429,9 @@ document
       .getElementById("siliconflowKey")
       .value.trim();
     const xaiKey = document.getElementById("xaiKey").value.trim();
-    const customEndpoint = document.getElementById("customEndpoint").value.trim();
+    const customEndpoint = document
+      .getElementById("customEndpoint")
+      .value.trim();
     const customApiKey = document.getElementById("customApiKey").value.trim();
 
     const results = [];
@@ -1441,7 +1444,7 @@ document
     if (claudeKey) {
       results.push("❌ Claude 暂不支持余额查询");
     }
-    
+
     if (geminiKey) {
       results.push("❌ Gemini 暂不支持余额查询");
     }
@@ -1451,7 +1454,7 @@ document
     }
 
     if (xaiKey) {
-      results.push("❌ xAI 暂不支持余额查询"); 
+      results.push("❌ xAI 暂不支持余额查询");
     }
 
     // 辅助函数：获当月开始日期
