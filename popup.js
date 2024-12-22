@@ -33,14 +33,26 @@ document
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "gpt-3.5-turbo",
+              model: "gpt-4o",
               messages: [{ role: "user", content: "Hi" }],
               max_tokens: 10,
             }),
           }
         );
         if (openaiResponse.ok) {
-          results.push("✅ OpenAI API 密钥有效。");
+          // 获取速率限制
+          const rateLimit = openaiResponse.headers.get('x-ratelimit-limit-tokens');
+          let tier = '';
+          if(rateLimit) {
+            const tokens = parseInt(rateLimit);
+            if(tokens === 30000) tier = 'Tier1';
+            else if(tokens === 450000) tier = 'Tier2';
+            else if(tokens === 800000) tier = 'Tier3';
+            else if(tokens === 2000000) tier = 'Tier4';
+            else if(tokens === 30000000) tier = 'Tier5';
+          }
+          
+          results.push(`✅ OpenAI API 密钥有效。${tier ? ` (${tier})` : ''}`);
           await saveValidKey("openai", openaiKey);
         } else {
           const errorData = await openaiResponse.json();
@@ -67,14 +79,24 @@ document
               "anthropic-dangerous-direct-browser-access": "true",
             },
             body: JSON.stringify({
-              model: "claude-3-sonnet-20240229",
+              model: "claude-3-5-sonnet-20241022",
               messages: [{ role: "user", content: "Hi" }],
               max_tokens: 10,
             }),
           }
         );
         if (claudeResponse.ok) {
-          results.push("✅ Claude API 密钥有效。");
+          // 获取速率限制
+          const rateLimit = claudeResponse.headers.get('anthropic-ratelimit-input-tokens-limit');
+          let tier = '';
+          if(rateLimit) {
+            const tokens = parseInt(rateLimit);
+            if(tokens === 40000) tier = 'Tier1';
+            else if(tokens === 80000) tier = 'Tier2';
+            else if(tokens === 160000) tier = 'Tier3';
+            else if(tokens === 400000) tier = 'Tier4';
+          }
+          results.push(`✅ Claude API 密钥有效。${tier ? ` (${tier})` : ''}`);
           await saveValidKey("claude", claudeKey);
         } else {
           const errorData = await claudeResponse.json();
@@ -872,7 +894,7 @@ document
             selectionDiv.appendChild(keyDiv);
           });
 
-          // 将选择区域插入到输入框后面
+          // 将选择区域插��到输入框后面
           input.parentNode.insertBefore(selectionDiv, input.nextSibling);
         }
       }
@@ -1073,7 +1095,7 @@ document
           const maxVisibleButtons = 5; // 最多显示的按钮数量
 
           if (totalPages <= maxVisibleButtons) {
-            // 如果总页数小于等于最大显示数，显示所有页码
+            // 如���总页数小于等于最大显示数，显示所有页码
             for (let i = 1; i <= totalPages; i++) {
               buttons.push(
                 `<button class="${
@@ -1322,7 +1344,7 @@ document
     }
   });
 
-// 添加导航菜单控制逻辑
+// 添加导航菜单��制逻辑
 document.addEventListener("DOMContentLoaded", function () {
   // 默认激活自定义接口区段
   const customSection = document.getElementById("custom-section");
