@@ -223,7 +223,7 @@ document
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "Qwen/Qwen2-72B-Instruct",
+              model: "Qwen/Qwen2.5-72B-Instruct",
               messages: [{ role: "user", content: "Hi" }],
               max_tokens: 10,
             }),
