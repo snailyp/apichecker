@@ -41,18 +41,20 @@ document
         );
         if (openaiResponse.ok) {
           // 获取速率限制
-          const rateLimit = openaiResponse.headers.get('x-ratelimit-limit-tokens');
-          let tier = '';
-          if(rateLimit) {
+          const rateLimit = openaiResponse.headers.get(
+            "x-ratelimit-limit-tokens"
+          );
+          let tier = "";
+          if (rateLimit) {
             const tokens = parseInt(rateLimit);
-            if(tokens === 30000) tier = 'Tier1';
-            else if(tokens === 450000) tier = 'Tier2';
-            else if(tokens === 800000) tier = 'Tier3';
-            else if(tokens === 2000000) tier = 'Tier4';
-            else if(tokens === 30000000) tier = 'Tier5';
+            if (tokens === 30000) tier = "Tier1";
+            else if (tokens === 450000) tier = "Tier2";
+            else if (tokens === 800000) tier = "Tier3";
+            else if (tokens === 2000000) tier = "Tier4";
+            else if (tokens === 30000000) tier = "Tier5";
           }
-          
-          results.push(`✅ OpenAI API 密钥有效。${tier ? ` (${tier})` : ''}`);
+
+          results.push(`✅ OpenAI API 密钥有效。${tier ? ` (${tier})` : ""}`);
           await saveValidKey("openai", openaiKey);
         } else {
           const errorData = await openaiResponse.json();
@@ -87,16 +89,18 @@ document
         );
         if (claudeResponse.ok) {
           // 获取速率限制
-          const rateLimit = claudeResponse.headers.get('anthropic-ratelimit-input-tokens-limit');
-          let tier = '';
-          if(rateLimit) {
+          const rateLimit = claudeResponse.headers.get(
+            "anthropic-ratelimit-input-tokens-limit"
+          );
+          let tier = "";
+          if (rateLimit) {
             const tokens = parseInt(rateLimit);
-            if(tokens === 40000) tier = 'Tier1';
-            else if(tokens === 80000) tier = 'Tier2';
-            else if(tokens === 160000) tier = 'Tier3';
-            else if(tokens === 400000) tier = 'Tier4';
+            if (tokens === 40000) tier = "Tier1";
+            else if (tokens === 80000) tier = "Tier2";
+            else if (tokens === 160000) tier = "Tier3";
+            else if (tokens === 400000) tier = "Tier4";
           }
-          results.push(`✅ Claude API 密钥有效。${tier ? ` (${tier})` : ''}`);
+          results.push(`✅ Claude API 密钥有效。${tier ? ` (${tier})` : ""}`);
           await saveValidKey("claude", claudeKey);
         } else {
           const errorData = await claudeResponse.json();
@@ -679,7 +683,7 @@ const KEY_PATTERNS = {
   gemini: /AIzaSy\S{33}/g,
   deepseek: /sk-[a-zA-Z0-9]{32}/g,
   openai:
-    /(sk-[a-zA-Z0-9]{48}|sk-proj-\S{48}|sk-proj-\S{124}|sk-proj-\S{156})/g,
+    /(sk-proj-\S{156}|sk-proj-\S{124}|sk-proj-\S{48}|sk-[a-zA-Z0-9]{48})/g,
   groq: /gsk_[a-zA-Z0-9]{52}/g,
   xai: /xai-[a-zA-Z0-9]{80}/g,
   custom: /sk-[a-zA-Z0-9]+/g,
@@ -894,7 +898,7 @@ document
             selectionDiv.appendChild(keyDiv);
           });
 
-          // 将选择区域插��到输入框后面
+          // 将选择区域插入到输入框后面
           input.parentNode.insertBefore(selectionDiv, input.nextSibling);
         }
       }
@@ -1095,7 +1099,7 @@ document
           const maxVisibleButtons = 5; // 最多显示的按钮数量
 
           if (totalPages <= maxVisibleButtons) {
-            // 如���总页数小于等于最大显示数，显示所有页码
+            // 如果总页数小于等于最大显示数，显示所有页码
             for (let i = 1; i <= totalPages; i++) {
               buttons.push(
                 `<button class="${
@@ -1344,7 +1348,7 @@ document
     }
   });
 
-// 添加导航菜单��制逻辑
+// 添加导航菜单制逻辑
 document.addEventListener("DOMContentLoaded", function () {
   // 默认激活自定义接口区段
   const customSection = document.getElementById("custom-section");
