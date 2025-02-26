@@ -2,8 +2,10 @@
  * 后台脚本 - 处理浏览器扩展的后台任务
  */
 
-// 添加控制台日志来调试
-console.log('Background script loaded');
+import * as logger from './js/logger.js';
+
+// 初始化时添加日志
+logger.info('Background script loaded');
 
 /**
  * 初始化侧边栏功能
@@ -15,64 +17,39 @@ function initSidePanel() {
     return;
   }
 
-  // 跟踪侧边栏状态
-  let isSidePanelOpen = false;
-
-  // 处理插件图标点击事件
-  chrome.action.onClicked.addListener((tab) => {
-    console.log('Icon clicked, current state:', isSidePanelOpen);
-    
-    // 切换侧边栏状态
-    isSidePanelOpen = !isSidePanelOpen;
-    
-    try {
-      if (isSidePanelOpen) {
-        // 打开侧边栏
-        if (chrome.sidePanel?.open) {
-          chrome.sidePanel.open({
-            tabId: tab.id
-          }).catch(err => {
-            console.error('Failed to open sidepanel:', err);
-          });
-          console.log('Sidepanel opened');
-        }
-        
-        // 设置图标为激活状态
-        chrome.action.setIcon({
-          path: "icon.png"
-        });
-      } else {
-        // 关闭侧边栏
-        if (chrome.sidePanel?.close) {
-          chrome.sidePanel.close({
-            tabId: tab.id
-          }).catch(err => {
-            console.error('Failed to close sidepanel:', err);
-          });
-          console.log('Sidepanel closed');
-        }
-        
-        // 恢复图标为默认状态
-        chrome.action.setIcon({
-          path: "icon.png"
-        });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
+  // 初始化时设置基本配置
+  chrome.sidePanel.setOptions({
+    enabled: true,  // 确保侧边栏功能被启用
+    path: "popup.html"
   });
 
-  // 监听侧边栏关闭事件
-  if (chrome.sidePanel?.onClose) {
-    chrome.sidePanel.onClose.addListener(() => {
-      console.log('Sidepanel closed by user');
-      isSidePanelOpen = false;
-      // 恢复图标为默认状态
-      chrome.action.setIcon({
-        path: "icon.png"
-      });
-    });
-  }
+  // 跟踪侧边栏状态
+  let sidePanelOpen = false;
+
+  // 处理插件图标点击事件
+  chrome.action.onClicked.addListener(async (tab) => {
+    try {
+      if (sidePanelOpen) {
+        // 如果侧边栏已打开，则通过切换状态来关闭它
+        chrome.sidePanel.setOptions({
+          enabled: false
+        });
+        logger.debug('Sidepanel disabled');
+        sidePanelOpen = false;
+      } else {
+        // 如果侧边栏已关闭，则启用并打开它
+        chrome.sidePanel.setOptions({
+          enabled: true,
+          path: "popup.html"
+        });
+        await chrome.sidePanel.open({tabId: tab.id});
+        logger.debug('Sidepanel opened', { tabId: tab.id });
+        sidePanelOpen = true;
+      }
+    } catch (error) {
+      logger.error('侧边栏操作失败', error);
+    }
+  });
 }
 
 // 初始化扩展

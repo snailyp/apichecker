@@ -4,6 +4,7 @@
 
 import { fetchModels, testModel } from './api-services.js';
 import { createLoadingAnimation, createModelTestTable, copyToClipboard } from './ui-utils.js';
+import * as logger from './logger.js';
 
 /**
  * 获取并显示模型列表
@@ -144,6 +145,9 @@ export async function testSelectedModels(endpoint, apiKey) {
 
   const results = [];
   
+  // 测试模型时添加日志
+  logger.info('开始测试模型', { selectedModels });
+
   // 逐个测试模型
   for (const selectedModel of selectedModels) {
     const result = await testModel(endpoint, apiKey, selectedModel);
@@ -151,10 +155,16 @@ export async function testSelectedModels(endpoint, apiKey) {
     
     // 每测试完一个模型就更新一次结果显示
     resultDiv.innerHTML = createModelTestTable(results);
+
+    // 测试单个模型时添加日志
+    logger.debug('测试单个模型', { model: selectedModel });
   }
 
   // 添加复制按钮的事件监听
   addCopyButtonsListeners(results);
+
+  // 模型测试完成时添加日志
+  logger.info('模型测试完成', { results });
 }
 
 /**

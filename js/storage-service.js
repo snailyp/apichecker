@@ -2,6 +2,8 @@
  * 存储服务模块 - 处理历史记录和密钥存储
  */
 
+import * as logger from './logger.js';
+
 /**
  * 保存有效的API密钥到历史记录
  * @param {string} platform - 平台名称
@@ -39,8 +41,10 @@ export async function saveValidKey(platform, key, endpoint = "") {
     const trimmedKeys = validKeys.slice(0, 500);
 
     await chrome.storage.local.set({ validKeys: trimmedKeys });
+
+    logger.info('保存API密钥', { platform, endpoint });
   } catch (error) {
-    console.error("保存历史记录失败:", error);
+    logger.error('保存历史记录失败', error);
   }
 }
 
@@ -51,9 +55,10 @@ export async function saveValidKey(platform, key, endpoint = "") {
 export async function getHistoryKeys() {
   try {
     const history = await chrome.storage.local.get("validKeys");
+    logger.debug('获取历史记录');
     return history.validKeys || [];
   } catch (error) {
-    console.error("获取历史记录失败:", error);
+    logger.error('获取历史记录失败', error);
     return [];
   }
 }
@@ -75,7 +80,7 @@ export async function deleteHistoryKey(index) {
     }
     return false;
   } catch (error) {
-    console.error("删除历史记录失败:", error);
+    logger.error("删除历史记录失败:", error);
     return false;
   }
 }
@@ -89,7 +94,7 @@ export async function clearAllHistory() {
     await chrome.storage.local.set({ validKeys: [] });
     return true;
   } catch (error) {
-    console.error("清空历史记录失败:", error);
+    logger.error("清空历史记录失败:", error);
     return false;
   }
 }

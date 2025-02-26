@@ -2,6 +2,8 @@
  * API服务模块 - 处理各种API的请求和验证
  */
 
+import * as logger from './logger.js';
+
 // API密钥的正则表达式
 export const KEY_PATTERNS = {
   siliconflow: /sk-[a-zA-Z0-9]{48}/g,
@@ -24,6 +26,7 @@ export const URL_PATTERN = /https?:\/\/[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*(?::\d+)
  */
 export async function checkOpenAIKey(apiKey) {
   try {
+    logger.debug('发送API请求', { platform: 'OpenAI', endpoint: 'https://api.openai.com/v1/chat/completions' });
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -50,6 +53,7 @@ export async function checkOpenAIKey(apiKey) {
         else if (tokens === 30000000) tier = "Tier5";
       }
 
+      logger.info('API请求成功', { platform: 'OpenAI', tier });
       return { 
         success: true, 
         message: `✅ OpenAI API 密钥有效。${tier ? ` (${tier})` : ""}`,
@@ -57,12 +61,14 @@ export async function checkOpenAIKey(apiKey) {
       };
     } else {
       const errorData = await response.json();
+      logger.error('API请求失败', errorData, { platform: 'OpenAI' });
       return { 
         success: false, 
         message: `❌ OpenAI API 错误：${errorData.error?.message || "未知错误"}`
       };
     }
   } catch (error) {
+    logger.error('API请求失败', error, { platform: 'OpenAI' });
     return { 
       success: false, 
       message: `❌ OpenAI API 错误：${error.message}`
