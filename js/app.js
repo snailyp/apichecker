@@ -2,12 +2,17 @@
  * 主应用模块 - 整合所有功能并初始化应用
  */
 
-import * as ApiService from './api-services.js';
-import { saveValidKey } from './storage-service.js';
-import { toggleHistoryPanel } from './history-manager.js';
-import { loadModelList, copySelectedModels, testSelectedModels, getSelectedModels } from './model-manager.js';
-import { autoDetectKeysAndUrls } from './auto-fill.js';
-import { getRequestUrl } from './ui-utils.js';
+import * as ApiService from "./api-services.js";
+import { autoDetectKeysAndUrls } from "./auto-fill.js";
+import { toggleHistoryPanel } from "./history-manager.js";
+import * as logger from "./logger.js";
+import {
+  copySelectedModels,
+  loadModelList,
+  testSelectedModels,
+} from "./model-manager.js";
+import { saveValidKey } from "./storage-service.js";
+import { getRequestUrl } from "./ui-utils.js";
 
 /**
  * 初始化应用
@@ -15,16 +20,22 @@ import { getRequestUrl } from './ui-utils.js';
 function initApp() {
   // 添加导航菜单事件监听
   initNavigation();
-  
+
   // 添加检测按钮事件监听
-  document.getElementById("checkButton")?.addEventListener("click", checkApiKeys);
-  
+  document
+    .getElementById("checkButton")
+    ?.addEventListener("click", checkApiKeys);
+
   // 添加清空按钮事件监听
-  document.getElementById("clearButton")?.addEventListener("click", clearAllInputs);
-  
+  document
+    .getElementById("clearButton")
+    ?.addEventListener("click", clearAllInputs);
+
   // 添加自动填充按钮事件监听
-  document.getElementById("autoFillButton")?.addEventListener("click", autoDetectKeysAndUrls);
-  
+  document
+    .getElementById("autoFillButton")
+    ?.addEventListener("click", autoDetectKeysAndUrls);
+
   // 添加历史记录按钮事件监听
   document.getElementById("historyButton")?.addEventListener("click", () => {
     const historyDiv = document.getElementById("history");
@@ -32,10 +43,12 @@ function initApp() {
       toggleHistoryPanel(historyDiv);
     }
   });
-  
+
   // 添加余额查询按钮事件监听
-  document.getElementById("checkBalanceBtn")?.addEventListener("click", checkBalance);
-  
+  document
+    .getElementById("checkBalanceBtn")
+    ?.addEventListener("click", checkBalance);
+
   // 添加复制模型按钮事件监听
   document.getElementById("copyModelsBtn")?.addEventListener("click", () => {
     const button = document.getElementById("copyModelsBtn");
@@ -43,12 +56,12 @@ function initApp() {
       copySelectedModels(button);
     }
   });
-  
+
   // 添加测试模型按钮事件监听
   document.getElementById("testModelsBtn")?.addEventListener("click", () => {
     const endpoint = document.getElementById("customEndpoint")?.value.trim();
     const apiKey = document.getElementById("customApiKey")?.value.trim();
-    
+
     if (endpoint && apiKey) {
       testSelectedModels(endpoint, apiKey);
     } else {
@@ -58,7 +71,7 @@ function initApp() {
       }
     }
   });
-  
+
   // 添加滚动按钮事件监听
   document.getElementById("scrollTopBtn")?.addEventListener("click", () => {
     window.scrollTo({
@@ -66,37 +79,38 @@ function initApp() {
       behavior: "smooth",
     });
   });
-  
+
   document.getElementById("scrollBottomBtn")?.addEventListener("click", () => {
     window.scrollTo({
       top: document.documentElement.scrollHeight,
       behavior: "smooth",
     });
   });
-  
+
   // 监听自定义接口输入框变化
   const customEndpoint = document.getElementById("customEndpoint");
   const customApiKey = document.getElementById("customApiKey");
-  
+
   if (customEndpoint && customApiKey) {
     // 处理模型列表更新
     function handleModelListUpdate() {
       const endpoint = customEndpoint.value.trim();
       const apiKey = customApiKey.value.trim();
-      
+
       if (endpoint && apiKey) {
         loadModelList(endpoint, apiKey);
       } else {
         const modelSelect = document.getElementById("modelSelect");
         if (modelSelect) {
-          modelSelect.innerHTML = '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+          modelSelect.innerHTML =
+            '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
         }
       }
     }
-    
+
     customEndpoint.addEventListener("input", handleModelListUpdate);
     customApiKey.addEventListener("input", handleModelListUpdate);
-    
+
     // 更新请求URL预览
     customEndpoint.addEventListener("input", () => {
       updateRequestUrlPreview(customEndpoint.value.trim());
@@ -108,54 +122,76 @@ function initApp() {
  * 初始化导航菜单
  */
 function initNavigation() {
-  // 默认隐藏所有区段
+  logger.debug("开始初始化导航菜单");
+
+  // 先隐藏所有区段和取消所有导航链接的激活状态
   document.querySelectorAll(".section").forEach((section) => {
     section.classList.remove("active");
+    logger.debug(`取消区段激活状态`, { sectionId: section.id });
   });
 
-  // 默认取消所有导航链接的激活状态  
   document.querySelectorAll(".nav-menu a").forEach((link) => {
     link.classList.remove("active");
+    logger.debug(`取消导航链接激活状态`, { href: link.getAttribute("href") });
   });
 
-  // 默认激活自定义接口区段
+  // 再激活自定义接口区段
   const customSection = document.getElementById("custom-section");
   if (customSection) {
     customSection.classList.add("active");
+    logger.debug("已激活自定义接口区段");
+  } else {
+    logger.warn("未找到自定义接口区段元素", { selector: "#custom-section" });
   }
 
-  // 默认激活导航菜单中的自定义接口链接
-  const customNavLink = document.querySelector(".nav-menu a[href='#custom-section']");
+  // 激活导航菜单中的自定义接口链接
+  const customNavLink = document.querySelector(
+    ".nav-menu a[href='#custom-section']"
+  );
   if (customNavLink) {
     customNavLink.classList.add("active");
+    logger.debug("已激活自定义接口导航链接");
+  } else {
+    logger.warn("未找到自定义接口导航链接", {
+      selector: ".nav-menu a[href='#custom-section']",
+    });
   }
 
   // 添加导航菜单点击事件
   const navLinks = document.querySelectorAll(".nav-menu a");
+  logger.debug("找到导航链接", { count: navLinks.length });
+
   navLinks.forEach((link) => {
     link.addEventListener("click", function (e) {
       e.preventDefault();
+      const href = this.getAttribute("href");
+      logger.debug("点击导航链接", { href });
 
-      // 取消所有链接的激活状态
       navLinks.forEach((l) => l.classList.remove("active"));
-      // 激活当前点击的链接
       this.classList.add("active");
+      logger.debug("已激活导航链接", { href });
 
-      // 获取目标区域的ID
-      const targetId = this.getAttribute("href").substring(1);
+      const targetId = href.substring(1);
 
-      // 隐藏所有区段
       document.querySelectorAll(".section").forEach((section) => {
         section.classList.remove("active");
+        logger.debug("取消区段激活状态", { sectionId: section.id });
       });
 
-      // 显示目标区段
       const targetSection = document.getElementById(targetId);
       if (targetSection) {
         targetSection.classList.add("active");
+        logger.debug("已激活目标区段", { targetId });
+      } else {
+        logger.warn("未找到目标区段", { targetId });
       }
     });
+    logger.debug("已为导航链接添加点击事件", {
+      href: link.getAttribute("href"),
+    });
   });
+
+  logger.info("导航菜单初始化完成");
 }
 
 /**
@@ -174,7 +210,7 @@ async function checkApiKeys() {
 
   const resultDiv = document.getElementById("result");
   if (!resultDiv) return;
-  
+
   resultDiv.innerHTML = "正在检测，请稍候...";
 
   const results = [];
@@ -246,8 +282,12 @@ async function checkApiKeys() {
   if (customEndpoint && customApiKey) {
     const modelSelect = document.getElementById("modelSelect");
     const selectedModel = modelSelect?.value || "gpt-3.5-turbo";
-    
-    const result = await ApiService.checkCustomEndpoint(customEndpoint, customApiKey, selectedModel);
+
+    const result = await ApiService.checkCustomEndpoint(
+      customEndpoint,
+      customApiKey,
+      selectedModel
+    );
     results.push(result.message);
     if (result.success) {
       await saveValidKey("custom", customApiKey, customEndpoint);
@@ -284,15 +324,32 @@ async function checkApiKeys() {
  */
 function clearAllInputs() {
   // 清空所有输入框
-  document.getElementById("openaiKey")?.value = "";
-  document.getElementById("claudeKey")?.value = "";
-  document.getElementById("geminiKey")?.value = "";
-  document.getElementById("deepseekKey")?.value = "";
-  document.getElementById("groqKey")?.value = "";
-  document.getElementById("siliconflowKey")?.value = "";
-  document.getElementById("customEndpoint")?.value = "";
-  document.getElementById("customApiKey")?.value = "";
-  document.getElementById("xaiKey")?.value = "";
+  const openaiKeyEl = document.getElementById("openaiKey");
+  if (openaiKeyEl) openaiKeyEl.value = "";
+
+  const claudeKeyEl = document.getElementById("claudeKey");
+  if (claudeKeyEl) claudeKeyEl.value = "";
+
+  const geminiKeyEl = document.getElementById("geminiKey");
+  if (geminiKeyEl) geminiKeyEl.value = "";
+
+  const deepseekKeyEl = document.getElementById("deepseekKey");
+  if (deepseekKeyEl) deepseekKeyEl.value = "";
+
+  const groqKeyEl = document.getElementById("groqKey");
+  if (groqKeyEl) groqKeyEl.value = "";
+
+  const siliconflowKeyEl = document.getElementById("siliconflowKey");
+  if (siliconflowKeyEl) siliconflowKeyEl.value = "";
+
+  const customEndpointEl = document.getElementById("customEndpoint");
+  if (customEndpointEl) customEndpointEl.value = "";
+
+  const customApiKeyEl = document.getElementById("customApiKey");
+  if (customApiKeyEl) customApiKeyEl.value = "";
+
+  const xaiKeyEl = document.getElementById("xaiKey");
+  if (xaiKeyEl) xaiKeyEl.value = "";
 
   // 清空结果显示区域
   const resultDiv = document.getElementById("result");
@@ -309,7 +366,8 @@ function clearAllInputs() {
   // 清空模型下拉列表
   const modelSelect = document.getElementById("modelSelect");
   if (modelSelect) {
-    modelSelect.innerHTML = '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+    modelSelect.innerHTML =
+      '<option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
   }
 
   // 清空模型复选框区域
@@ -332,7 +390,7 @@ function clearAllInputs() {
 function updateRequestUrlPreview(endpoint) {
   const urlPreviewDiv = document.getElementById("urlPreview");
   if (!urlPreviewDiv) return;
-  
+
   if (endpoint) {
     const fullUrl = getRequestUrl(endpoint);
     urlPreviewDiv.textContent = `实际请求地址: ${fullUrl}`;
@@ -393,7 +451,10 @@ async function checkBalance() {
 
   // 自定义 OpenAI 兼容接口的额度查询
   if (customEndpoint && customApiKey) {
-    const result = await ApiService.checkCustomEndpointQuota(customEndpoint, customApiKey);
+    const result = await ApiService.checkCustomEndpointQuota(
+      customEndpoint,
+      customApiKey
+    );
     results.push(result.message);
   }
 
