@@ -2,6 +2,7 @@
  * API服务模块 - 处理各种API的请求和验证
  */
 
+import { getDefaultModel } from './config-service.js';
 import * as logger from './logger.js';
 
 // API密钥的正则表达式
@@ -26,7 +27,15 @@ export const URL_PATTERN = /https?:\/\/[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*(?::\d+)
  */
 export async function checkOpenAIKey(apiKey) {
   try {
-    logger.debug('发送API请求', { platform: 'OpenAI', endpoint: 'https://api.openai.com/v1/chat/completions' });
+    // 获取默认模型
+    const defaultModel = await getDefaultModel('openai');
+    
+    logger.debug('发送API请求', { 
+      platform: 'OpenAI', 
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      model: defaultModel
+    });
+    
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -34,7 +43,7 @@ export async function checkOpenAIKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -83,6 +92,15 @@ export async function checkOpenAIKey(apiKey) {
  */
 export async function checkClaudeKey(apiKey) {
   try {
+    // 获取默认模型
+    const defaultModel = await getDefaultModel('claude');
+    
+    logger.debug('发送API请求', { 
+      platform: 'Claude', 
+      endpoint: 'https://api.anthropic.com/v1/messages',
+      model: defaultModel
+    });
+    
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -92,7 +110,7 @@ export async function checkClaudeKey(apiKey) {
         "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -137,8 +155,20 @@ export async function checkClaudeKey(apiKey) {
  */
 export async function checkGeminiKey(apiKey) {
   try {
+    // 获取默认模型
+    const defaultModel = await getDefaultModel('gemini');
+    
+    logger.debug('发送API请求', { 
+      platform: 'Gemini', 
+      endpoint: 'https://generativelanguage.googleapis.com/v1/models',
+      model: defaultModel
+    });
+    
+    // 从默认模型中提取模型名称
+    const modelName = defaultModel || 'gemini-1.5-flash';
+    
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -181,6 +211,15 @@ export async function checkGeminiKey(apiKey) {
  */
 export async function checkDeepseekKey(apiKey) {
   try {
+    // 获取默认模型
+    const defaultModel = await getDefaultModel('deepseek');
+    
+    logger.debug('发送API请求', { 
+      platform: 'Deepseek', 
+      endpoint: 'https://api.deepseek.com/v1/chat/completions',
+      model: defaultModel
+    });
+    
     const completionResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -188,7 +227,7 @@ export async function checkDeepseekKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -221,6 +260,15 @@ export async function checkDeepseekKey(apiKey) {
  */
 export async function checkGroqKey(apiKey) {
   try {
+    // 获取默认模型
+    const defaultModel = await getDefaultModel('groq');
+    
+    logger.debug('发送API请求', { 
+      platform: 'Groq', 
+      endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+      model: defaultModel
+    });
+    
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -228,7 +276,7 @@ export async function checkGroqKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "mixtral-8x7b-32768",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -261,6 +309,15 @@ export async function checkGroqKey(apiKey) {
  */
 export async function checkSiliconflowKey(apiKey) {
   try {
+    // 获取默认模型
+    const defaultModel = await getDefaultModel('siliconflow');
+    
+    logger.debug('发送API请求', { 
+      platform: 'Siliconflow', 
+      endpoint: 'https://api.siliconflow.cn/v1/chat/completions',
+      model: defaultModel
+    });
+    
     const completionResponse = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -268,7 +325,7 @@ export async function checkSiliconflowKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "Qwen/Qwen2.5-72B-Instruct",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -301,6 +358,15 @@ export async function checkSiliconflowKey(apiKey) {
  */
 export async function checkXAIKey(apiKey) {
   try {
+    // 获取默认模型
+    const defaultModel = await getDefaultModel('xai');
+    
+    logger.debug('发送API请求', { 
+      platform: 'xAI', 
+      endpoint: 'https://api.x.ai/v1/chat/completions',
+      model: defaultModel
+    });
+    
     const response = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -308,7 +374,7 @@ export async function checkXAIKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "grok-beta",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -569,6 +635,81 @@ export async function checkSiliconflowBalance(apiKey) {
     return {
       success: false,
       message: `❌ Siliconflow 余额查询错误：${error.message}`
+    };
+  }
+}
+
+/**
+ * 保存到NewAPI
+ * @param {string} name - 通道名称
+ * @param {string} key - API密钥
+ * @param {string} models - 支持的模型列表
+ * @param {string} token - NewAPI系统访问令牌
+ * @param {string} url - NewAPI系统访问令牌
+ * @returns {Promise<Object>} - 保存结果
+ */
+export async function saveToNewAPI(name, key, models, token, url) {
+  try {
+    logger.debug('发送保存到NewAPI请求', { 
+      endpoint: `${url}/api/channel/`,
+      name
+    });
+    
+    const response = await fetch(`${url}/api/channel/`, {
+      method: "POST",
+      headers: {
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'zh-CN,zh;q=0.9',
+        'cache-control': 'no-store',
+        'content-type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'new-api-user': '1',
+        'origin': `${url}`,
+        'referer': `${url}/channel`,
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
+      },
+      body: JSON.stringify({
+        "name": name,
+        "type": 1,
+        "key": key,
+        "openai_organization": "",
+        "max_input_tokens": 0,
+        "base_url": "",
+        "other": "",
+        "model_mapping": "",
+        "status_code_mapping": "",
+        "models": models,
+        "auto_ban": 1,
+        "test_model": "",
+        "groups": ["default"],
+        "priority": 0,
+        "weight": 0,
+        "tag": "",
+        "group": "default"
+      }),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      logger.info('保存到NewAPI成功', { name });
+      return { 
+        success: true, 
+        message: `✅ 成功保存到NewAPI: ${name}`,
+        data
+      };
+    } else {
+      const errorData = await response.json();
+      logger.error('保存到NewAPI失败', errorData);
+      return { 
+        success: false, 
+        message: `❌ 保存到NewAPI失败：${errorData.message || "未知错误"}`
+      };
+    }
+  } catch (error) {
+    logger.error('保存到NewAPI失败', error);
+    return { 
+      success: false, 
+      message: `❌ 保存到NewAPI失败：${error.message}`
     };
   }
 }

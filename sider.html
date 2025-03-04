@@ -111,11 +111,71 @@
         <button type="button" id="checkBalanceBtn" title="查询余额">💰</button>
         <button type="button" id="clearButton" title="清空输入">🗑️</button>
         <button type="button" id="historyButton" title="历史记录">📋</button>
+        <button type="button" id="configButton" title="系统配置">⚙️</button>
       </div>
     </form>
 
     <div id="result"></div>
     <div id="history"></div>
+    
+    <!-- 配置弹出层 -->
+    <div class="config-overlay"></div>
+    <div class="config-popup">
+      <div class="config-popup-header">
+        <h2>系统配置</h2>
+        <button class="config-popup-close">&times;</button>
+      </div>
+      
+      <div class="config-group">
+        <h3>默认测试模型配置</h3>
+        <div class="config-item">
+          <label for="defaultOpenAIModel">OpenAI 默认模型：</label>
+          <input type="text" id="defaultOpenAIModel" name="defaultOpenAIModel" placeholder="例如: gpt-4o" />
+        </div>
+        <div class="config-item">
+          <label for="defaultClaudeModel">Claude 默认模型：</label>
+          <input type="text" id="defaultClaudeModel" name="defaultClaudeModel" placeholder="例如: claude-3-5-sonnet-20241022" />
+        </div>
+        <div class="config-item">
+          <label for="defaultGeminiModel">Gemini 默认模型：</label>
+          <input type="text" id="defaultGeminiModel" name="defaultGeminiModel" placeholder="例如: gemini-1.5-flash" />
+        </div>
+        <div class="config-item">
+          <label for="defaultDeepseekModel">Deepseek 默认模型：</label>
+          <input type="text" id="defaultDeepseekModel" name="defaultDeepseekModel" placeholder="例如: deepseek-chat" />
+        </div>
+        <div class="config-item">
+          <label for="defaultGroqModel">Groq 默认模型：</label>
+          <input type="text" id="defaultGroqModel" name="defaultGroqModel" placeholder="例如: mixtral-8x7b-32768" />
+        </div>
+        <div class="config-item">
+          <label for="defaultSiliconflowModel">Siliconflow 默认模型：</label>
+          <input type="text" id="defaultSiliconflowModel" name="defaultSiliconflowModel" placeholder="例如: Qwen/Qwen2.5-72B-Instruct" />
+        </div>
+        <div class="config-item">
+          <label for="defaultXAIModel">xAI 默认模型：</label>
+          <input type="text" id="defaultXAIModel" name="defaultXAIModel" placeholder="例如: grok-beta" />
+        </div>
+      </div>
+      
+      <div class="config-group">
+        <h3>NewAPI 系统</h3>
+        <div class="config-item">
+          <label for="newAPIUrl">系统访问地址：</label>
+          <input type="text" id="newAPIUrl" name="newAPIUrl" placeholder="输入 NewAPI 系统访问地址" />
+        </div>
+        <div class="config-item">
+          <label for="newAPIToken">系统访问令牌：</label>
+          <input type="text" id="newAPIToken" name="newAPIToken" placeholder="输入 NewAPI 系统访问令牌" />
+        </div>
+      </div>
+      
+      <div class="config-actions">
+        <button type="button" id="saveConfigBtn">保存配置</button>
+        <button type="button" id="resetConfigBtn">重置配置</button>
+      </div>
+    </div>
+    
     <!-- 添加滚动按钮 -->
     <div class="scroll-buttons">
       <button id="scrollTopBtn" title="回到顶部">↑</button>

@@ -4,6 +4,7 @@
 
 import * as ApiService from "./api-services.js";
 import { autoDetectKeysAndUrls } from "./auto-fill.js";
+import { getConfig, resetConfig, saveConfig } from "./config-service.js";
 import { toggleHistoryPanel } from "./history-manager.js";
 import * as logger from "./logger.js";
 import {
@@ -18,6 +19,9 @@ import { getRequestUrl } from "./ui-utils.js";
  * 初始化应用
  */
 function initApp() {
+  // 加载配置
+  loadConfig();
+
   // 添加导航菜单事件监听
   initNavigation();
 
@@ -48,6 +52,15 @@ function initApp() {
   document
     .getElementById("checkBalanceBtn")
     ?.addEventListener("click", checkBalance);
+    
+  // 添加配置按钮事件监听
+  document.getElementById("configButton")?.addEventListener("click", toggleConfigPanel);
+  
+  // 添加配置弹出层关闭按钮事件监听
+  document.querySelector(".config-popup-close")?.addEventListener("click", closeConfigPanel);
+  
+  // 添加配置弹出层遮罩层点击关闭事件
+  document.querySelector(".config-overlay")?.addEventListener("click", closeConfigPanel);
 
   // 添加复制模型按钮事件监听
   document.getElementById("copyModelsBtn")?.addEventListener("click", () => {
@@ -71,6 +84,12 @@ function initApp() {
       }
     }
   });
+
+  // 添加配置保存按钮事件监听
+  document.getElementById("saveConfigBtn")?.addEventListener("click", saveUserConfig);
+
+  // 添加配置重置按钮事件监听
+  document.getElementById("resetConfigBtn")?.addEventListener("click", resetUserConfig);
 
   // 添加滚动按钮事件监听
   document.getElementById("scrollTopBtn")?.addEventListener("click", () => {
@@ -115,6 +134,100 @@ function initApp() {
     customEndpoint.addEventListener("input", () => {
       updateRequestUrlPreview(customEndpoint.value.trim());
     });
+  }
+}
+
+/**
+ * 加载配置
+ */
+async function loadConfig() {
+  try {
+    const config = await getConfig();
+    
+    // 填充默认模型配置
+    document.getElementById("defaultOpenAIModel").value = config.defaultModels.openai || "";
+    document.getElementById("defaultClaudeModel").value = config.defaultModels.claude || "";
+    document.getElementById("defaultGeminiModel").value = config.defaultModels.gemini || "";
+    document.getElementById("defaultDeepseekModel").value = config.defaultModels.deepseek || "";
+    document.getElementById("defaultGroqModel").value = config.defaultModels.groq || "";
+    document.getElementById("defaultSiliconflowModel").value = config.defaultModels.siliconflow || "";
+    document.getElementById("defaultXAIModel").value = config.defaultModels.xai || "";
+    // 填充NewAPI系统访问地址
+    document.getElementById("newAPIUrl").value = config.newAPIUrl || "";
+    // 填充NewAPI系统访问令牌
+    document.getElementById("newAPIToken").value = config.newAPIToken || "";
+    
+    logger.info("配置加载成功");
+  } catch (error) {
+    logger.error("配置加载失败", error);
+  }
+}
+
+/**
+ * 保存用户配置
+ */
+async function saveUserConfig() {
+  try {
+    const config = {
+      defaultModels: {
+        openai: document.getElementById("defaultOpenAIModel").value.trim(),
+        claude: document.getElementById("defaultClaudeModel").value.trim(),
+        gemini: document.getElementById("defaultGeminiModel").value.trim(),
+        deepseek: document.getElementById("defaultDeepseekModel").value.trim(),
+        groq: document.getElementById("defaultGroqModel").value.trim(),
+        siliconflow: document.getElementById("defaultSiliconflowModel").value.trim(),
+        xai: document.getElementById("defaultXAIModel").value.trim()
+      },
+      newAPIUrl: document.getElementById("newAPIUrl").value.trim(),
+      newAPIToken: document.getElementById("newAPIToken").value.trim()
+    };
+    
+    const success = await saveConfig(config);
+    
+    const resultDiv = document.getElementById("result");
+    if (resultDiv) {
+      if (success) {
+        resultDiv.innerHTML = "✅ 配置保存成功";
+      } else {
+        resultDiv.innerHTML = "❌ 配置保存失败";
+      }
+    }
+  } catch (error) {
+    logger.error("保存配置失败", error);
+    const resultDiv = document.getElementById("result");
+    if (resultDiv) {
+      resultDiv.innerHTML = `❌ 配置保存失败: ${error.message}`;
+    }
+  }
+}
+
+/**
+ * 重置用户配置
+ */
+async function resetUserConfig() {
+  try {
+    const success = await resetConfig();
+    
+    if (success) {
+      // 重新加载配置到界面
+      await loadConfig();
+      
+      const resultDiv = document.getElementById("result");
+      if (resultDiv) {
+        resultDiv.innerHTML = "✅ 配置已重置为默认值";
+      }
+    } else {
+      const resultDiv = document.getElementById("result");
+      if (resultDiv) {
+        resultDiv.innerHTML = "❌ 配置重置失败";
+      }
+    }
+  } catch (error) {
+    logger.error("重置配置失败", error);
+    const resultDiv = document.getElementById("result");
+    if (resultDiv) {
+      resultDiv.innerHTML = `❌ 配置重置失败: ${error.message}`;
+    }
   }
 }
 
@@ -195,6 +308,40 @@ function initNavigation() {
 }
 
 /**
+ * 切换配置面板显示状态
+ */
+function toggleConfigPanel() {
+  logger.debug("切换配置面板显示状态");
+  const configPopup = document.querySelector(".config-popup");
+  const configOverlay = document.querySelector(".config-overlay");
+  
+  if (configPopup && configOverlay) {
+    configPopup.classList.add("active");
+    configOverlay.classList.add("active");
+    logger.debug("配置面板已显示");
+  } else {
+    logger.warn("未找到配置面板元素");
+  }
+}
+
+/**
+ * 关闭配置面板
+ */
+function closeConfigPanel() {
+  logger.debug("关闭配置面板");
+  const configPopup = document.querySelector(".config-popup");
+  const configOverlay = document.querySelector(".config-overlay");
+  
+  if (configPopup && configOverlay) {
+    configPopup.classList.remove("active");
+    configOverlay.classList.remove("active");
+    logger.debug("配置面板已关闭");
+  } else {
+    logger.warn("未找到配置面板元素");
+  }
+}
+
+/**
  * 检测所有API密钥
  */
 async function checkApiKeys() {
@@ -218,9 +365,26 @@ async function checkApiKeys() {
   // 检测 OpenAI API 密钥
   if (openaiKey) {
     const result = await ApiService.checkOpenAIKey(openaiKey);
-    results.push(result.message);
+    
+    // 如果API密钥有效，添加保存到NewAPI的按钮
     if (result.success) {
       await saveValidKey("openai", openaiKey);
+      
+      // 获取NewAPI系统访问令牌
+      const config = await getConfig();
+      const newAPIToken = config.newAPIToken;
+      const newAPIUrl = config.newAPIUrl;
+
+      
+      // 添加保存到NewAPI的选项
+      if (newAPIToken && newAPIUrl) {
+        const saveToNewAPIButton = `<button type="button" class="save-to-newapi-btn" data-key="${openaiKey}" data-name="openai">保存到NewAPI</button>`;
+        results.push(result.message + " " + saveToNewAPIButton);
+      } else {
+        results.push(result.message + " <span class='warning'>(配置NewAPI系统访问地址和令牌后可保存到NewAPI)</span>");
+      }
+    } else {
+      results.push(result.message);
     }
   }
 
@@ -317,6 +481,72 @@ async function checkApiKeys() {
   }
 
   resultDiv.innerHTML = results.join("<br />");
+  
+  // 添加保存到NewAPI按钮的事件监听
+  document.querySelectorAll(".save-to-newapi-btn").forEach(button => {
+    button.addEventListener("click", saveKeyToNewAPI);
+  });
+}
+
+/**
+ * 保存API密钥到NewAPI
+ * @param {Event} event - 点击事件
+ */
+async function saveKeyToNewAPI(event) {
+  const button = event.target;
+  const apiKey = button.getAttribute("data-key");
+  const name = button.getAttribute("data-name");
+  
+  // 禁用按钮，防止重复点击
+  button.disabled = true;
+  button.textContent = "保存中...";
+  
+  try {
+    // 获取NewAPI系统访问令牌
+    const config = await getConfig();
+    const newAPIToken = config.newAPIToken;
+    const newAPIUrl = config.newAPIUrl;
+    
+    if (!newAPIToken) {
+      throw new Error("未配置NewAPI系统访问令牌");
+    }
+
+    if (!newAPIUrl) {
+      throw new Error("未配置NewAPI系统访问地址");
+    }
+    
+    // 默认模型列表
+    const defaultModels = "gpt-3.5-turbo,gpt-3.5-turbo-0613,gpt-3.5-turbo-1106,gpt-3.5-turbo-0125,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-instruct,gpt-4,gpt-4-0613,gpt-4-1106-preview,gpt-4-0125-preview,gpt-4-32k,gpt-4-32k-0613,gpt-4-turbo-preview,gpt-4-turbo,gpt-4-turbo-2024-04-09,gpt-4-vision-preview,chatgpt-4o-latest,gpt-4o,gpt-4o-2024-05-13,gpt-4o-2024-08-06,gpt-4o-2024-11-20,gpt-4o-mini,gpt-4o-mini-2024-07-18,gpt-4.5-preview,gpt-4.5-preview-2025-02-27,o1-preview,o1-preview-2024-09-12,o1-mini,o1-mini-2024-09-12,o3-mini,o3-mini-2025-01-31,o3-mini-high,o3-mini-2025-01-31-high,o3-mini-low,o3-mini-2025-01-31-low,o3-mini-medium,o3-mini-2025-01-31-medium,o1,o1-2024-12-17,gpt-4o-audio-preview,gpt-4o-audio-preview-2024-10-01,gpt-4o-realtime-preview,gpt-4o-realtime-preview-2024-10-01,gpt-4o-realtime-preview-2024-12-17,gpt-4o-mini-realtime-preview,gpt-4o-mini-realtime-preview-2024-12-17,text-embedding-ada-002,text-embedding-3-small,text-embedding-3-large,text-curie-001,text-babbage-001,text-ada-001,text-moderation-latest,text-moderation-stable,text-davinci-edit-001,davinci-002,babbage-002,dall-e-3,whisper-1,tts-1,tts-1-1106,tts-1-hd,tts-1-hd-1106";
+    
+    // 保存到NewAPI
+    const result = await ApiService.saveToNewAPI(name, apiKey, defaultModels, newAPIToken);
+    
+    // 更新结果显示
+    const resultDiv = document.getElementById("result");
+    if (resultDiv) {
+      const resultHtml = resultDiv.innerHTML;
+      const updatedHtml = resultHtml.replace(
+        `<button type="button" class="save-to-newapi-btn" data-key="${apiKey}" data-name="${name}">保存到NewAPI</button>`,
+        result.success ? 
+          `<span class="success-text">已保存到NewAPI</span>` : 
+          `<span class="error-text">保存失败: ${result.message}</span>`
+      );
+      resultDiv.innerHTML = updatedHtml;
+    }
+  } catch (error) {
+    logger.error("保存到NewAPI失败", error);
+    
+    // 恢复按钮状态
+    button.disabled = false;
+    button.textContent = "保存到NewAPI";
+    
+    // 显示错误信息
+    const resultDiv = document.getElementById("result");
+    if (resultDiv) {
+      const errorMessage = `<span class="error-text">保存到NewAPI失败: ${error.message}</span>`;
+      resultDiv.innerHTML += `<br />${errorMessage}`;
+    }
+  }
 }
 
 /**
