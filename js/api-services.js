@@ -179,7 +179,7 @@ export async function checkGeminiKey(apiKey) {
         });
         
         const timeoutPromise = new Promise(resolve => {
-          setTimeout(() => resolve("timeout"), 100);
+          setTimeout(() => resolve("timeout"), 500);
         });
         
         await Promise.race([imagenPromise, timeoutPromise]);
