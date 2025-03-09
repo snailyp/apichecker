@@ -50,7 +50,7 @@ export async function checkOpenAIKey(apiKey) {
         else if (tokens === 450000) tier = "Tier2";
         else if (tokens === 800000) tier = "Tier3";
         else if (tokens === 2000000) tier = "Tier4";
-        else if (tokens === 30000000) tier = "Tier5";
+        else if (tokens === 150000000) tier = "Tier5";
       }
 
       logger.info('API请求成功', { platform: 'OpenAI', tier });
