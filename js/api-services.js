@@ -59,7 +59,7 @@ export async function checkOpenAIKey(apiKey) {
         else if (tokens === 450000) tier = "Tier2";
         else if (tokens === 800000) tier = "Tier3";
         else if (tokens === 2000000) tier = "Tier4";
-        else if (tokens === 30000000) tier = "Tier5";
+        else if (tokens === 150000000) tier = "Tier5";
       }
 
       logger.info('API请求成功', { platform: 'OpenAI', tier });
@@ -185,10 +185,45 @@ export async function checkGeminiKey(apiKey) {
     );
     
     if (response.ok) {
-      return { 
-        success: true, 
-        message: "✅ Gemini API 密钥有效。"
-      };
+      // 检测是否为付费密钥
+      try {
+        const imagenPromise = new Promise((_, reject) => {
+          fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                instances: [{ prompt: "Hi" }],
+              }),
+            }
+          )
+          .then(response => {
+            if (!response.ok) {
+              reject(new Error("unauthorized"));
+            }
+          })
+          .catch(error => reject(error));
+        });
+        
+        const timeoutPromise = new Promise(resolve => {
+          setTimeout(() => resolve("timeout"), 500);
+        });
+        
+        await Promise.race([imagenPromise, timeoutPromise]);
+        
+        return { 
+          success: true, 
+          message: "✅ Gemini API 密钥有效。(Paid)"
+        };
+      } catch (imagenError) {
+        return { 
+          success: true, 
+          message: "✅ Gemini API 密钥有效。(Free)"
+        };
+      }
     } else {
       const errorData = await response.json();
       return { 
