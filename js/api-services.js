@@ -263,17 +263,26 @@ export async function checkGroqKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "mixtral-8x7b-32768",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
     });
     
     if (response.ok) {
-      return { 
-        success: true, 
-        message: "✅ Groq API 密钥有效。"
-      };
+      // 获取速率限制
+      const rateLimit = response.headers.get("x-ratelimit-limit-tokens");
+      if(rateLimit == 6000){
+        return { 
+          success: true, 
+          message: "✅ Groq API 密钥有效。(free)"
+        };
+      } else {
+        return { 
+          success: true, 
+          message: "✅ Groq API 密钥有效。(paid)"
+        };
+      }
     } else {
       const errorData = await response.json();
       return { 
