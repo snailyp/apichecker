@@ -7,6 +7,7 @@ const startBatchCheckBtn = document.getElementById('startBatchCheckBtn');
 const copyResultsBtn = document.getElementById('copyResultsBtn');
 const batchResultsEl = document.getElementById('batchResults');
 const batchProviderEl = document.getElementById('batchProvider');
+const tidyKeysBtn = document.getElementById('tidyKeysBtn');
 
 const keyCheckMap = {
   openai: api.checkOpenAIKey,
@@ -237,5 +238,36 @@ function copyResults() {
 
 startBatchCheckBtn.addEventListener('click', startBatchCheck);
 copyResultsBtn.addEventListener('click', copyResults);
+
+/**
+ * 整理密钥输入框中的内容
+ */
+function tidyKeys() {
+  const provider = batchProviderEl.value;
+  const text = batchApiKeysEl.value;
+  let keys = [];
+
+  if (provider === 'auto') {
+    // 自动检测所有类型的 key
+    for (const keyType in api.KEY_PATTERNS) {
+      const pattern = api.KEY_PATTERNS[keyType];
+      const foundKeys = text.match(pattern) || [];
+      keys.push(...foundKeys);
+    }
+  } else {
+    // 只检测指定厂商的 key
+    const pattern = api.KEY_PATTERNS[provider];
+    if (pattern) {
+      keys = text.match(pattern) || [];
+    }
+  }
+
+  // 去重并格式化
+  const uniqueKeys = [...new Set(keys)];
+  batchApiKeysEl.value = uniqueKeys.join('\n');
+  logger.info(`整理了 ${uniqueKeys.length} 个密钥`, { provider });
+}
+
+tidyKeysBtn.addEventListener('click', tidyKeys);
 
 logger.info('批量检测模块已加载');
