@@ -138,7 +138,7 @@ export async function checkClaudeKey(apiKey) {
 export async function checkGeminiKey(apiKey) {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -159,7 +159,7 @@ export async function checkGeminiKey(apiKey) {
       try {
         const imagenPromise = new Promise((_, reject) => {
           fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-06-05:predict?key=${apiKey}`,
             {
               method: "POST",
               headers: {
@@ -172,17 +172,11 @@ export async function checkGeminiKey(apiKey) {
           )
           .then(response => {
             if (!response.ok) {
-              reject(new Error("unauthorized"));
+              reject(new Error(response.text));
             }
           })
           .catch(error => reject(error));
         });
-        
-        const timeoutPromise = new Promise(resolve => {
-          setTimeout(() => resolve("timeout"), 500);
-        });
-        
-        await Promise.race([imagenPromise, timeoutPromise]);
         
         return { 
           success: true, 
@@ -352,7 +346,7 @@ export async function checkXAIKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "grok-beta",
+        model: "grok-3-mini",
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
