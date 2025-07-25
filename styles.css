@@ -971,3 +971,97 @@ html {
 .action-buttons button#checkBalanceBtn:hover {
   background-color: rgba(224, 168, 0, 0.6);
 }
+
+/* 批量密钥检测区域样式 */
+#batch-check-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#batchApiKeys {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-family: monospace;
+  resize: vertical;
+  min-height: 150px;
+}
+
+#concurrencyLimit {
+  width: 80px;
+  padding: 8px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.batch-action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.batch-action-buttons button {
+  flex: 1;
+  margin-top: 0;
+}
+
+#startBatchCheckBtn {
+  background-color: #1a73e8;
+}
+
+#startBatchCheckBtn:hover {
+  background-color: #1557b0;
+}
+
+#copyResultsBtn {
+  background-color: #4caf50;
+}
+
+#copyResultsBtn:hover {
+  background-color: #45a049;
+}
+
+#batchResults {
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+#batchResults table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#batchResults th,
+#batchResults td {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  text-align: left;
+  word-break: break-all;
+}
+
+#batchResults th {
+  background-color: #f5f5f5;
+  font-weight: 500;
+}
+
+#batchResults .status-valid {
+  color: #28a745;
+  font-weight: bold;
+}
+
+#batchResults .status-invalid {
+  color: #dc3545;
+  font-weight: bold;
+}

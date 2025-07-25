@@ -50,14 +50,15 @@ export async function checkOpenAIKey(apiKey) {
         else if (tokens === 450000) tier = "Tier2";
         else if (tokens === 800000) tier = "Tier3";
         else if (tokens === 2000000) tier = "Tier4";
-        else if (tokens === 150000000) tier = "Tier5";
+        else if (tokens === 30000000) tier = "Tier5";
       }
 
       logger.info('API请求成功', { platform: 'OpenAI', tier });
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `✅ OpenAI API 密钥有效。${tier ? ` (${tier})` : ""}`,
-        tier
+        tier,
+        isPaid: true
       };
     } else {
       const errorData = await response.json();
@@ -110,10 +111,11 @@ export async function checkClaudeKey(apiKey) {
         else if (tokens === 400000) tier = "Tier4";
       }
       
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `✅ Claude API 密钥有效。${tier ? ` (${tier})` : ""}`,
-        tier
+        tier,
+        isPaid: true
       };
     } else {
       const errorData = await response.json();
@@ -138,7 +140,7 @@ export async function checkClaudeKey(apiKey) {
 export async function checkGeminiKey(apiKey) {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -156,48 +158,46 @@ export async function checkGeminiKey(apiKey) {
     
     if (response.ok) {
       // 检测是否为付费密钥
-      try {
-        const imagenPromise = new Promise((_, reject) => {
-          fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-06-05:predict?key=${apiKey}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
+      const paidCheckResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-06-05:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: "Hi" }],
               },
-              body: JSON.stringify({
-                instances: [{ prompt: "Hi" }],
-              }),
-            }
-          )
-          .then(response => {
-            if (!response.ok) {
-              reject(new Error(response.text));
-            }
-          })
-          .catch(error => reject(error));
-        });
-        
-        return { 
-          success: true, 
-          message: "✅ Gemini API 密钥有效。(Paid)"
+            ],
+          }),
+        }
+      );
+
+      if (paidCheckResponse.ok) {
+        return {
+          success: true,
+          message: "✅ Gemini API 密钥有效。(Paid)",
+          isPaid: true
         };
-      } catch (imagenError) {
-        return { 
-          success: true, 
-          message: "✅ Gemini API 密钥有效。(Free)"
+      } else {
+        return {
+          success: true,
+          message: "✅ Gemini API 密钥有效。(Free)",
+          isPaid: false
         };
       }
     } else {
       const errorData = await response.json();
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: `❌ Gemini API 错误：${errorData.error?.message || "未知错误"}`
       };
     }
   } catch (error) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: `❌ Gemini API 错误：${error.message}`
     };
   }
@@ -224,9 +224,10 @@ export async function checkDeepseekKey(apiKey) {
     });
 
     if (completionResponse.ok) {
-      return { 
-        success: true, 
-        message: "✅ Deepseek API 密钥有效。"
+      return {
+        success: true,
+        message: "✅ Deepseek API 密钥有效。",
+        isPaid: true
       };
     } else {
       const errorData = await completionResponse.json();
@@ -267,14 +268,16 @@ export async function checkGroqKey(apiKey) {
       // 获取速率限制
       const rateLimit = response.headers.get("x-ratelimit-limit-tokens");
       if(rateLimit == 6000){
-        return { 
-          success: true, 
-          message: "✅ Groq API 密钥有效。(free)"
+        return {
+          success: true,
+          message: "✅ Groq API 密钥有效。(free)",
+          isPaid: false
         };
       } else {
-        return { 
-          success: true, 
-          message: "✅ Groq API 密钥有效。(paid)"
+        return {
+          success: true,
+          message: "✅ Groq API 密钥有效。(paid)",
+          isPaid: true
         };
       }
     } else {
@@ -313,9 +316,10 @@ export async function checkSiliconflowKey(apiKey) {
     });
 
     if (completionResponse.ok) {
-      return { 
-        success: true, 
-        message: "✅ Siliconflow API 密钥有效。"
+      return {
+        success: true,
+        message: "✅ Siliconflow API 密钥有效。",
+        isPaid: true
       };
     } else {
       const errorData = await completionResponse.json();
@@ -353,9 +357,10 @@ export async function checkXAIKey(apiKey) {
     });
     
     if (response.ok) {
-      return { 
-        success: true, 
-        message: "✅ xAI API 密钥有效。"
+      return {
+        success: true,
+        message: "✅ xAI API 密钥有效。",
+        isPaid: true
       };
     } else {
       const errorData = await response.json();
