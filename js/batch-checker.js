@@ -204,8 +204,9 @@ function copyResults() {
     const validKeys = rows.map(row => {
         const key = row.dataset.fullKey;
         const isPaid = row.dataset.isPaid === 'true';
+        const balance = row.dataset.balance;
         const isValid = row.querySelector('.status-valid');
-        return isValid ? { key, isPaid } : null;
+        return isValid ? { key, isPaid, balance } : null;
     }).filter(Boolean);
 
     if (validKeys.length === 0) {
@@ -213,7 +214,13 @@ function copyResults() {
         return;
     }
 
-    const paidKeys = validKeys.filter(k => k.isPaid).map(k => k.key);
+    const paidKeys = validKeys.filter(k => k.isPaid).map(k => {
+        const balanceValue = parseFloat(k.balance);
+        if (!isNaN(balanceValue) && balanceValue !== -1) {
+            return `${k.key} ---- 余额: ${balanceValue.toFixed(4)}`;
+        }
+        return k.key;
+    });
     const freeKeys = validKeys.filter(k => !k.isPaid).map(k => k.key);
 
     let clipboardText = '';
