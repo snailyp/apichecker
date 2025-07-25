@@ -13,6 +13,7 @@ export const KEY_PATTERNS = {
   openai: /(sk-proj-\S{156}|sk-proj-\S{124}|sk-proj-\S{48}|sk-[a-zA-Z0-9]{48})/g,
   groq: /gsk_[a-zA-Z0-9]{52}/g,
   xai: /xai-[a-zA-Z0-9]{80}/g,
+  openrouter: /sk-or-v1-[a-f0-9]{64}/g,
   custom: /sk-[a-zA-Z0-9]+/g,
 };
 
@@ -26,8 +27,7 @@ export const URL_PATTERN = /https?:\/\/[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*(?::\d+)
  */
 export async function checkOpenAIKey(apiKey) {
   try {
-    logger.debug('发送API请求', { platform: 'OpenAI', endpoint: 'https://api.openai.com/v1/chat/completions' });
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const completionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -39,10 +39,21 @@ export async function checkOpenAIKey(apiKey) {
         max_tokens: 10,
       }),
     });
-    
-    if (response.ok) {
-      // 获取速率限制
-      const rateLimit = response.headers.get("x-ratelimit-limit-tokens");
+
+    if (completionResponse.ok) {
+      let balance = null;
+      let message = "✅ OpenAI API 密钥有效。";
+      try {
+        const balanceData = await getOpenAIBalance(apiKey, "https://api.openai.com");
+        if (balanceData.success) {
+          balance = balanceData.remaining;
+          message += ` 剩余额度: $${balance.toFixed(4)}`;
+        }
+      } catch (e) {
+        logger.warn('查询OpenAI余额失败', e);
+      }
+
+      const rateLimit = completionResponse.headers.get("x-ratelimit-limit-tokens");
       let tier = "";
       if (rateLimit) {
         const tokens = parseInt(rateLimit);
@@ -51,29 +62,16 @@ export async function checkOpenAIKey(apiKey) {
         else if (tokens === 800000) tier = "Tier3";
         else if (tokens === 2000000) tier = "Tier4";
         else if (tokens === 30000000) tier = "Tier5";
+        message += tier ? ` (${tier})` : "";
       }
 
-      logger.info('API请求成功', { platform: 'OpenAI', tier });
-      return {
-        success: true,
-        message: `✅ OpenAI API 密钥有效。${tier ? ` (${tier})` : ""}`,
-        tier,
-        isPaid: true
-      };
+      return { success: true, message, tier, isPaid: true, balance };
     } else {
-      const errorData = await response.json();
-      logger.error('API请求失败', errorData, { platform: 'OpenAI' });
-      return { 
-        success: false, 
-        message: `❌ OpenAI API 错误：${errorData.error?.message || "未知错误"}`
-      };
+      const errorData = await completionResponse.json();
+      return { success: false, message: `❌ OpenAI API 错误：${errorData.error?.message || "未知错误"}` };
     }
   } catch (error) {
-    logger.error('API请求失败', error, { platform: 'OpenAI' });
-    return { 
-      success: false, 
-      message: `❌ OpenAI API 错误：${error.message}`
-    };
+    return { success: false, message: `❌ OpenAI API 错误：${error.message}` };
   }
 }
 
@@ -224,23 +222,24 @@ export async function checkDeepseekKey(apiKey) {
     });
 
     if (completionResponse.ok) {
-      return {
-        success: true,
-        message: "✅ Deepseek API 密钥有效。",
-        isPaid: true
-      };
+      let balance = null;
+      let message = "✅ Deepseek API 密钥有效。";
+      try {
+        const balanceResult = await checkDeepseekBalance(apiKey);
+        if (balanceResult.success) {
+          balance = parseFloat(balanceResult.data.totalBalance);
+          message += ` 总余额: ${balanceResult.data.totalBalance} ${balanceResult.data.currency}`;
+        }
+      } catch (e) {
+        logger.warn('查询Deepseek余额失败', e);
+      }
+      return { success: true, message, isPaid: true, balance };
     } else {
       const errorData = await completionResponse.json();
-      return { 
-        success: false, 
-        message: `❌ Deepseek API 错误：${errorData.error?.message || "未知错误"}`
-      };
+      return { success: false, message: `❌ Deepseek API 错误：${errorData.error?.message || "未知错误"}` };
     }
   } catch (error) {
-    return { 
-      success: false, 
-      message: `❌ Deepseek API 错误：${error.message}`
-    };
+    return { success: false, message: `❌ Deepseek API 错误：${error.message}` };
   }
 }
 
@@ -316,23 +315,24 @@ export async function checkSiliconflowKey(apiKey) {
     });
 
     if (completionResponse.ok) {
-      return {
-        success: true,
-        message: "✅ Siliconflow API 密钥有效。",
-        isPaid: true
-      };
+      let balance = null;
+      let message = "✅ Siliconflow API 密钥有效。";
+      try {
+        const balanceResult = await checkSiliconflowBalance(apiKey);
+        if (balanceResult.success) {
+          balance = parseFloat(balanceResult.data.totalBalance);
+          message += ` 总余额: ${balanceResult.data.totalBalance} CNY`;
+        }
+      } catch (e) {
+        logger.warn('查询Siliconflow余额失败', e);
+      }
+      return { success: true, message, isPaid: true, balance };
     } else {
       const errorData = await completionResponse.json();
-      return { 
-        success: false, 
-        message: `❌ Siliconflow API 错误：${errorData.error?.message || "未知错误"}`
-      };
+      return { success: false, message: `❌ Siliconflow API 错误：${errorData.error?.message || "未知错误"}` };
     }
   } catch (error) {
-    return { 
-      success: false, 
-      message: `❌ Siliconflow API 错误：${error.message}`
-    };
+    return { success: false, message: `❌ Siliconflow API 错误：${error.message}` };
   }
 }
 
@@ -374,6 +374,48 @@ export async function checkXAIKey(apiKey) {
       success: false, 
       message: `❌ xAI API 错误：${error.message}`
     };
+  }
+}
+
+/**
+ * 检测OpenRouter API密钥
+ * @param {string} apiKey - OpenRouter API密钥
+ * @returns {Promise<Object>} - 检测结果
+ */
+export async function checkOpenRouterKey(apiKey) {
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openrouter/auto",
+        messages: [{ role: "user", content: "Hi" }],
+        max_tokens: 10,
+      }),
+    });
+    
+    if (response.ok) {
+      let balance = null;
+      let message = "✅ OpenRouter API 密钥有效。";
+      try {
+        const creditsResult = await checkOpenRouterCredits(apiKey);
+        if (creditsResult.success) {
+          balance = creditsResult.data.total_credits - creditsResult.data.total_usage;
+          message += ` 剩余信用: $${balance.toFixed(4)}`;
+        }
+      } catch (e) {
+        logger.warn('查询OpenRouter额度失败', e);
+      }
+      return { success: true, message, isPaid: true, balance };
+    } else {
+      const errorData = await response.json();
+      return { success: false, message: `❌ OpenRouter API 错误：${errorData.error?.message || "未知错误"}` };
+    }
+  } catch (error) {
+    return { success: false, message: `❌ OpenRouter API 错误：${error.message}` };
   }
 }
 
@@ -518,6 +560,50 @@ export async function testModel(endpoint, apiKey, model) {
 }
 
 /**
+ * 获取OpenAI兼容接口的余额信息
+ * @param {string} apiKey
+ * @param {string} baseUrl
+ * @returns {Promise<Object>}
+ */
+async function getOpenAIBalance(apiKey, baseUrl) {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const startDate = `${year}-${month}-01`;
+  const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  endDate.setDate(endDate.getDate() - 1);
+  const endDateStr = `${year}-${month}-${String(endDate.getDate()).padStart(2, "0")}`;
+
+  const headers = { Authorization: `Bearer ${apiKey}` };
+
+  try {
+    const subUrl = `${baseUrl}/v1/dashboard/billing/subscription`;
+    const usageUrl = `${baseUrl}/v1/dashboard/billing/usage?start_date=${startDate}&end_date=${endDateStr}`;
+
+    const [subResponse, usageResponse] = await Promise.all([
+      fetch(subUrl, { headers }),
+      fetch(usageUrl, { headers })
+    ]);
+
+    if (!subResponse.ok || !usageResponse.ok) {
+      return { success: false, message: "无法获取额度信息" };
+    }
+
+    const subData = await subResponse.json();
+    const usageData = await usageResponse.json();
+    
+    const totalGranted = subData.hard_limit_usd;
+    const totalUsed = usageData.total_usage / 100;
+    const remaining = totalGranted - totalUsed;
+
+    return { success: true, totalGranted, totalUsed, remaining };
+  } catch (error) {
+    logger.error('查询OpenAI余额时出错', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
  * 查询Deepseek余额
  * @param {string} apiKey - Deepseek API密钥
  * @returns {Promise<Object>} - 余额信息
@@ -612,6 +698,50 @@ export async function checkSiliconflowBalance(apiKey) {
     return {
       success: false,
       message: `❌ Siliconflow 余额查询错误：${error.message}`
+    };
+  }
+}
+
+/**
+ * 查询OpenRouter额度
+ * @param {string} apiKey - OpenRouter API密钥
+ * @returns {Promise<Object>} - 额度信息
+ */
+export async function checkOpenRouterCredits(apiKey) {
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/credits", {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const credits = data.data;
+      return {
+        success: true,
+        data: {
+          total_credits: credits.total_credits,
+          total_usage: credits.total_usage,
+        },
+        message: [
+          `💰 OpenRouter 额度信息：`,
+          `- 信用额度：$${credits.total_credits.toFixed(4)}`,
+          `- 已用额度：$${credits.total_usage.toFixed(4)}`
+        ].join("<br />")
+      };
+    } else {
+      const errorData = await response.json();
+      return {
+        success: false,
+        message: `❌ OpenRouter 额度查询错误：${errorData.error?.message || "未知错误"}`
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: `❌ OpenRouter 额度查询错误：${error.message}`
     };
   }
 }

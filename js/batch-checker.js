@@ -16,6 +16,7 @@ const keyCheckMap = {
   groq: api.checkGroqKey,
   siliconflow: api.checkSiliconflowKey,
   xai: api.checkXAIKey,
+  openrouter: api.checkOpenRouterKey,
 };
 
 /**
@@ -60,6 +61,7 @@ async function startBatchCheck() {
           <th>密钥 (部分)</th>
           <th>类型</th>
           <th>状态</th>
+          <th id="balance-header" style="cursor: pointer;">余额 ↕️</th>
           <th>信息</th>
         </tr>
       </thead>
@@ -79,6 +81,7 @@ async function startBatchCheck() {
       <td>${shortKey}</td>
       <td>${type || '未知'}</td>
       <td class="status-${status}">${status}</td>
+      <td class="balance-cell">N/A</td>
       <td>${message}</td>
     `;
     tbody.appendChild(row);
@@ -96,7 +99,8 @@ async function startBatchCheck() {
   const checkKey = async (keyData, index) => {
     const { key, type, row } = keyData;
     const statusCell = row.cells[3];
-    const messageCell = row.cells[4];
+    const balanceCell = row.cells[4];
+    const messageCell = row.cells[5];
 
     statusCell.textContent = '检测中...';
     statusCell.className = 'status-checking';
@@ -113,10 +117,17 @@ async function startBatchCheck() {
     keyData.status = result.success ? 'valid' : 'invalid';
     keyData.message = result.message;
     keyData.isPaid = result.isPaid;
+    keyData.balance = result.balance;
     row.dataset.isPaid = result.isPaid;
+    row.dataset.balance = result.balance ?? -1; // 使用 ?? 来处理 undefined 或 null
 
     statusCell.textContent = result.success ? '有效' : '无效';
     statusCell.className = result.success ? 'status-valid' : 'status-invalid';
+    if (result.balance !== undefined && result.balance !== null) {
+        balanceCell.textContent = result.balance.toFixed(4);
+    } else {
+        balanceCell.textContent = 'N/A';
+    }
     messageCell.innerHTML = result.message;
   };
 
@@ -138,7 +149,54 @@ async function startBatchCheck() {
 
   await Promise.all(workers);
   logger.info('批量检测完成', { total: keys.length });
+
+  // 添加排序事件监听器
+  const balanceHeader = document.getElementById('balance-header');
+  if (balanceHeader) {
+      balanceHeader.addEventListener('click', () => sortResults('balance'));
+  }
 }
+
+let sortDirection = {};
+
+function sortResults(column) {
+    const tbody = document.getElementById('batch-results-tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    // 初始化或切换排序方向
+    sortDirection[column] = sortDirection[column] === 'asc' ? 'desc' : 'asc';
+    const direction = sortDirection[column];
+
+    rows.sort((a, b) => {
+        let valA, valB;
+
+        if (column === 'balance') {
+            valA = parseFloat(a.dataset.balance);
+            valB = parseFloat(b.dataset.balance);
+            // 将 N/A (-1) 视为最低优先级
+            if (valA === -1) valA = direction === 'asc' ? -Infinity : Infinity;
+            if (valB === -1) valB = direction === 'asc' ? -Infinity : Infinity;
+        } else {
+            // 可以扩展到其他列的排序
+            const cellIndex = Array.from(a.parentElement.children).indexOf(a);
+            valA = a.cells[cellIndex].textContent.trim();
+            valB = b.cells[cellIndex].textContent.trim();
+        }
+
+        if (valA < valB) {
+            return direction === 'asc' ? -1 : 1;
+        }
+        if (valA > valB) {
+            return direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+    });
+
+    // 重新渲染表格
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
+}
+
 
 function copyResults() {
     const rows = Array.from(batchResultsEl.querySelectorAll('tr[data-full-key]'));

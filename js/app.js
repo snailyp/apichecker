@@ -119,75 +119,67 @@ function initApp() {
 }
 
 /**
+ * 显示指定的区段，并隐藏所有其他区段
+ * @param {string} sectionId 要显示的区段的ID
+ */
+function showSection(sectionId) {
+  logger.debug(`尝试显示区段: ${sectionId}`);
+
+  // 隐藏所有区段
+  document.querySelectorAll(".section").forEach((section) => {
+    section.classList.remove("active");
+  });
+
+  // 如果目标不是批量检测区段，则清空其结果
+  if (sectionId !== "batch-check-section") {
+    const batchResultsEl = document.getElementById("batchResults");
+    if (batchResultsEl) {
+      batchResultsEl.innerHTML = "";
+      logger.debug("已清空批量检测结果");
+    }
+  }
+
+  // 显示目标区段
+  const targetSection = document.getElementById(sectionId);
+  if (targetSection) {
+    targetSection.classList.add("active");
+    logger.debug(`已激活区段: ${sectionId}`);
+  } else {
+    logger.warn(`未找到目标区段: ${sectionId}`);
+  }
+}
+
+/**
  * 初始化导航菜单
  */
 function initNavigation() {
   logger.debug("开始初始化导航菜单");
 
-  // 先隐藏所有区段和取消所有导航链接的激活状态
-  document.querySelectorAll(".section").forEach((section) => {
-    section.classList.remove("active");
-    logger.debug(`取消区段激活状态`, { sectionId: section.id });
-  });
-
-  document.querySelectorAll(".nav-menu a").forEach((link) => {
-    link.classList.remove("active");
-    logger.debug(`取消导航链接激活状态`, { href: link.getAttribute("href") });
-  });
-
-  // 再激活自定义接口区段
-  const customSection = document.getElementById("custom-section");
-  if (customSection) {
-    customSection.classList.add("active");
-    logger.debug("已激活自定义接口区段");
-  } else {
-    logger.warn("未找到自定义接口区段元素", { selector: "#custom-section" });
-  }
-
-  // 激活导航菜单中的自定义接口链接
-  const customNavLink = document.querySelector(
-    ".nav-menu a[href='#custom-section']"
-  );
-  if (customNavLink) {
-    customNavLink.classList.add("active");
-    logger.debug("已激活自定义接口导航链接");
-  } else {
-    logger.warn("未找到自定义接口导航链接", {
-      selector: ".nav-menu a[href='#custom-section']",
-    });
-  }
-
-  // 添加导航菜单点击事件
   const navLinks = document.querySelectorAll(".nav-menu a");
-  logger.debug("找到导航链接", { count: navLinks.length });
 
+  // 设置初始状态
+  const initialSectionId = "custom-section";
+  showSection(initialSectionId);
+
+  navLinks.forEach((link) => {
+    link.classList.remove("active");
+    if (link.getAttribute("href") === `#${initialSectionId}`) {
+      link.classList.add("active");
+    }
+  });
+
+  // 添加点击事件
   navLinks.forEach((link) => {
     link.addEventListener("click", function (e) {
       e.preventDefault();
-      const href = this.getAttribute("href");
-      logger.debug("点击导航链接", { href });
+      const targetId = this.getAttribute("href").substring(1);
 
+      // 更新导航链接的激活状态
       navLinks.forEach((l) => l.classList.remove("active"));
       this.classList.add("active");
-      logger.debug("已激活导航链接", { href });
 
-      const targetId = href.substring(1);
-
-      document.querySelectorAll(".section").forEach((section) => {
-        section.classList.remove("active");
-        logger.debug("取消区段激活状态", { sectionId: section.id });
-      });
-
-      const targetSection = document.getElementById(targetId);
-      if (targetSection) {
-        targetSection.classList.add("active");
-        logger.debug("已激活目标区段", { targetId });
-      } else {
-        logger.warn("未找到目标区段", { targetId });
-      }
-    });
-    logger.debug("已为导航链接添加点击事件", {
-      href: link.getAttribute("href"),
+      // 显示目标区段
+      showSection(targetId);
     });
   });
 
@@ -205,6 +197,7 @@ async function checkApiKeys() {
   const groqKey = document.getElementById("groqKey")?.value.trim();
   const siliconflowKey = document.getElementById("siliconflowKey")?.value.trim();
   const xaiKey = document.getElementById("xaiKey")?.value.trim();
+  const openrouterKey = document.getElementById("openrouterKey")?.value.trim();
   const customEndpoint = document.getElementById("customEndpoint")?.value.trim();
   const customApiKey = document.getElementById("customApiKey")?.value.trim();
 
@@ -278,6 +271,15 @@ async function checkApiKeys() {
     }
   }
 
+  // 检测 OpenRouter API 密钥
+  if (openrouterKey) {
+    const result = await ApiService.checkOpenRouterKey(openrouterKey);
+    results.push(result.message);
+    if (result.success) {
+      await saveValidKey("openrouter", openrouterKey);
+    }
+  }
+
   // 检测自定义 OpenAI 兼容接口
   if (customEndpoint && customApiKey) {
     const modelSelect = document.getElementById("modelSelect");
@@ -311,6 +313,7 @@ async function checkApiKeys() {
     !groqKey &&
     !siliconflowKey &&
     !xaiKey &&
+    !openrouterKey &&
     !customEndpoint
   ) {
     results.push("⚠️ 请至少输入一个 API 密钥进行检测。");
@@ -351,10 +354,23 @@ function clearAllInputs() {
   const xaiKeyEl = document.getElementById("xaiKey");
   if (xaiKeyEl) xaiKeyEl.value = "";
 
+  const openrouterKeyEl = document.getElementById("openrouterKey");
+  if (openrouterKeyEl) openrouterKeyEl.value = "";
+
+  // 清空批量检测输入框
+  const batchApiKeysEl = document.getElementById("batchApiKeys");
+  if (batchApiKeysEl) batchApiKeysEl.value = "";
+
   // 清空结果显示区域
   const resultDiv = document.getElementById("result");
   if (resultDiv) {
     resultDiv.innerHTML = "";
+  }
+
+  // 清空批量检测结果区域
+  const batchResultsEl = document.getElementById("batchResults");
+  if (batchResultsEl) {
+    batchResultsEl.innerHTML = "";
   }
 
   // 清空所有密钥选择区域
@@ -411,6 +427,7 @@ async function checkBalance() {
   const groqKey = document.getElementById("groqKey")?.value.trim();
   const siliconflowKey = document.getElementById("siliconflowKey")?.value.trim();
   const xaiKey = document.getElementById("xaiKey")?.value.trim();
+  const openrouterKey = document.getElementById("openrouterKey")?.value.trim();
   const customEndpoint = document.getElementById("customEndpoint")?.value.trim();
   const customApiKey = document.getElementById("customApiKey")?.value.trim();
 
@@ -435,6 +452,12 @@ async function checkBalance() {
 
   if (xaiKey) {
     results.push("❌ xAI 暂不支持余额查询");
+  }
+
+  // OpenRouter 余额查询
+  if (openrouterKey) {
+    const result = await ApiService.checkOpenRouterCredits(openrouterKey);
+    results.push(result.message);
   }
 
   // Deepseek 余额查询

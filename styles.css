@@ -973,7 +973,7 @@ html {
 }
 
 /* 批量密钥检测区域样式 */
-#batch-check-section {
+#batch-check-section.active {
   display: flex;
   flex-direction: column;
   gap: 10px;

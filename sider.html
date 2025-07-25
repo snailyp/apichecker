@@ -17,6 +17,7 @@
       <a href="#groq-section">Groq</a>
       <a href="#siliconflow-section">Siliconflow</a>
       <a href="#xai-section">xAI</a>
+      <a href="#openrouter-section">OpenRouter</a>
       <a href="#custom-section">自定义接口</a>
       <a href="#batch-check-section">批量检测</a>
     </nav>
@@ -64,6 +65,13 @@
         <div class="section-title">xAI API</div>
         <label for="xaiKey">xAI API 密钥：</label>
         <input type="text" id="xaiKey" name="xaiKey" />
+      </div>
+
+      <!-- OpenRouter 相关 -->
+      <div class="section" id="openrouter-section">
+        <div class="section-title">OpenRouter API</div>
+        <label for="openrouterKey">API 密钥：</label>
+        <input type="text" id="openrouterKey" name="openrouterKey" />
       </div>
 
       <!-- 自定义接口配置 -->
@@ -120,6 +128,7 @@
           <option value="groq">Groq</option>
           <option value="siliconflow">Siliconflow</option>
           <option value="xai">xAI</option>
+          <option value="openrouter">OpenRouter</option>
         </select>
         <label for="concurrencyLimit">并行检测数量:</label>
         <input type="number" id="concurrencyLimit" value="5" min="1" />
