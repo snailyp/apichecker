@@ -136,7 +136,12 @@
           <input type="text" id="batchCustomEndpoint" placeholder="例如: https://api.example.com">
           <div id="batchUrlPreview" class="url-preview"></div>
           <label for="batchModelInput">测试模型:</label>
-          <input type="text" id="batchModelInput" placeholder="例如: gpt-3.5-turbo">
+          <div class="model-input-container">
+            <select id="batchModelSelect" style="max-width: 150px; display: inline-block;"></select>
+            <input type="text" id="batchModelInput" placeholder="手动输入模型" style="display: none;">
+          </div>
+          <button type="button" id="fetchBatchModelsBtn" class="small-btn">获取模型</button>
+          <button type="button" id="toggleBatchModelBtn" class="small-btn">手动输入</button>
         </div>
         <label for="concurrencyLimit">并行检测数量:</label>
         <input type="number" id="concurrencyLimit" value="5" min="1" />

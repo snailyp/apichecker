@@ -445,9 +445,26 @@ export async function checkCustomEndpoint(endpoint, apiKey, model = "gpt-3.5-tur
     });
 
     if (completionResponse.ok) {
+      let balance = null;
+      let message = "✅ 自定义 OpenAI 兼容接口可用。";
+      let isPaid = false; // 默认不是付费
+
+      try {
+        const balanceData = await getCustomBalance(endpoint, apiKey);
+        if (balanceData.success) {
+          balance = balanceData.remaining;
+          message += ` 剩余额度: $${balance.toFixed(4)}`;
+          isPaid = true; // 查到余额就认为是付费
+        }
+      } catch (e) {
+        logger.warn('查询自定义接口余额失败', e);
+      }
+
       return { 
         success: true, 
-        message: "✅ 自定义 OpenAI 兼容接口可用。"
+        message,
+        balance,
+        isPaid
       };
     } else {
       const errorData = await completionResponse.json();
@@ -747,6 +764,63 @@ export async function checkOpenRouterCredits(apiKey) {
 }
 
 /**
+ * 获取自定义OpenAI兼容接口的余额信息
+ * @param {string} endpoint
+ * @param {string} apiKey
+ * @returns {Promise<Object>}
+ */
+export async function getCustomBalance(endpoint, apiKey) {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const startDate = `${year}-${month}-01`;
+  
+  // 获取当月的最后一天
+  const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const lastDay = new Date(nextMonth - 1);
+  const endDate = `${year}-${month}-${String(lastDay.getDate()).padStart(2, "0")}`;
+
+  const headers = { Authorization: `Bearer ${apiKey}` };
+  const baseUrl = endpoint.endsWith("/") ? endpoint.slice(0, -1) : endpoint;
+
+  try {
+    const subUrl = `${baseUrl}/v1/dashboard/billing/subscription`;
+    const usageUrl = `${baseUrl}/v1/dashboard/billing/usage?start_date=${startDate}&end_date=${endDate}`;
+
+    const [subResponse, usageResponse] = await Promise.all([
+      fetch(subUrl, { headers }),
+      fetch(usageUrl, { headers })
+    ]);
+
+    if (!subResponse.ok) {
+        // 如果/subscription接口404，说明可能是不支持该方式的接口，静默失败
+        if(subResponse.status === 404) {
+            return { success: false, message: "不支持的余额查询接口" };
+        }
+      const errorData = await subResponse.json().catch(() => ({}));
+      return { success: false, message: `获取订阅信息失败: ${errorData.error?.message || subResponse.statusText}` };
+    }
+    
+    if (!usageResponse.ok) {
+        const errorData = await usageResponse.json().catch(() => ({}));
+        return { success: false, message: `获取使用量信息失败: ${errorData.error?.message || usageResponse.statusText}` };
+    }
+
+    const subData = await subResponse.json();
+    const usageData = await usageResponse.json();
+    
+    const totalGranted = subData.hard_limit_usd;
+    const totalUsed = usageData.total_usage / 100;
+    const remaining = totalGranted - totalUsed;
+
+    return { success: true, totalGranted, totalUsed, remaining };
+  } catch (error) {
+    logger.error('查询自定义接口余额时出错', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
  * 查询自定义OpenAI兼容接口额度
  * @param {string} endpoint - 接口地址
  * @param {string} apiKey - API密钥
@@ -754,54 +828,20 @@ export async function checkOpenRouterCredits(apiKey) {
  */
 export async function checkCustomEndpointQuota(endpoint, apiKey) {
   try {
-    // 辅助函数：获当月开始日期
-    function getStartDate() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, "0");
-      return `${year}-${month}-01`;
-    }
+    const balanceResult = await getCustomBalance(endpoint, apiKey);
 
-    // 辅助函数：获取当前日期
-    function getEndDate() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, "0");
-      const day = String(today.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    }
-
-    const quotaResponse = await fetch(`${endpoint}/dashboard/billing/subscription`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    });
-    
-    const usageResponse = await fetch(
-      `${endpoint}/dashboard/billing/usage?start_date=${getStartDate()}&end_date=${getEndDate()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      }
-    );
-
-    if (quotaResponse.ok && usageResponse.ok) {
-      const quotaData = await quotaResponse.json();
-      const usageData = await usageResponse.json();
-
-      const quotaInfo = quotaData.hard_limit_usd ? `${quotaData.hard_limit_usd.toFixed(2)} $` : "无法获取";
-      const usedInfo = `${(usageData.total_usage / 100).toFixed(2)} $`;
-      const remainInfo = quotaData.hard_limit_usd
-        ? `${(quotaData.hard_limit_usd - usageData.total_usage / 100).toFixed(2)} $`
-        : "无法计算";
+    if (balanceResult.success) {
+      const { totalGranted, totalUsed, remaining } = balanceResult;
+      const quotaInfo = totalGranted ? `${totalGranted.toFixed(2)} $` : "无法获取";
+      const usedInfo = `${totalUsed.toFixed(2)} $`;
+      const remainInfo = remaining !== null ? `${remaining.toFixed(2)} $` : "无法计算";
 
       return {
         success: true,
         data: {
-          quota: quotaData.hard_limit_usd,
-          used: usageData.total_usage / 100,
-          remaining: quotaData.hard_limit_usd ? (quotaData.hard_limit_usd - usageData.total_usage / 100) : null
+          quota: totalGranted,
+          used: totalUsed,
+          remaining: remaining
         },
         message: [
           `💰 自定义接口额度信息：`,
@@ -811,10 +851,9 @@ export async function checkCustomEndpointQuota(endpoint, apiKey) {
         ].join("<br />")
       };
     } else {
-      const errorData = await quotaResponse.json();
       return {
         success: false,
-        message: `❌ 自定义接口额度查询错误：${errorData.error?.message || "未知错误"}`
+        message: `❌ 自定义接口额度查询错误：${balanceResult.message || "未知错误"}`
       };
     }
   } catch (error) {

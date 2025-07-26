@@ -10,7 +10,10 @@ const batchProviderEl = document.getElementById('batchProvider');
 const tidyKeysBtn = document.getElementById('tidyKeysBtn');
 const batchCustomProviderOptions = document.getElementById('batch-custom-provider-options');
 const batchCustomEndpointEl = document.getElementById('batchCustomEndpoint');
+const batchModelSelectEl = document.getElementById('batchModelSelect');
 const batchModelInputEl = document.getElementById('batchModelInput');
+const fetchBatchModelsBtn = document.getElementById('fetchBatchModelsBtn');
+const toggleBatchModelBtn = document.getElementById('toggleBatchModelBtn');
 const batchUrlPreviewEl = document.getElementById('batchUrlPreview');
 
 const keyCheckMap = {
@@ -24,7 +27,9 @@ const keyCheckMap = {
   openrouter: api.checkOpenRouterKey,
   custom: (key) => {
     const endpoint = batchCustomEndpointEl.value;
-    const model = batchModelInputEl.value;
+    const model = batchModelSelectEl.style.display !== 'none'
+                  ? batchModelSelectEl.value
+                  : batchModelInputEl.value;
     if (!endpoint) {
       return { success: false, message: '请输入自定义接口地址' };
     }
@@ -75,6 +80,7 @@ async function startBatchCheck() {
           <th>类型</th>
           <th>状态</th>
           <th id="balance-header" style="cursor: pointer;">余额 ↕️</th>
+          <th>模型</th>
           <th>信息</th>
         </tr>
       </thead>
@@ -95,6 +101,7 @@ async function startBatchCheck() {
       <td>${type || '未知'}</td>
       <td class="status-${status}">${status}</td>
       <td class="balance-cell">N/A</td>
+      <td class="model-cell"></td>
       <td>${message}</td>
     `;
     tbody.appendChild(row);
@@ -113,7 +120,8 @@ async function startBatchCheck() {
     const { key, type, row } = keyData;
     const statusCell = row.cells[3];
     const balanceCell = row.cells[4];
-    const messageCell = row.cells[5];
+    const modelCell = row.cells[5];
+    const messageCell = row.cells[6];
 
     statusCell.textContent = '检测中...';
     statusCell.className = 'status-checking';
@@ -142,6 +150,14 @@ async function startBatchCheck() {
         balanceCell.textContent = 'N/A';
     }
     messageCell.innerHTML = result.message;
+
+    // 如果是自定义类型，显示测试时使用的模型
+    if (type === 'custom') {
+        const model = batchModelSelectEl.style.display !== 'none'
+            ? batchModelSelectEl.value
+            : batchModelInputEl.value;
+        modelCell.textContent = model || 'N/A';
+    }
   };
 
   const worker = async () => {
@@ -315,5 +331,61 @@ batchProviderEl.addEventListener('change', () => {
 batchCustomEndpointEl.addEventListener('input', () => {
   updateBatchRequestUrlPreview(batchCustomEndpointEl.value.trim());
 });
+
+async function fetchBatchModels() {
+   const endpoint = batchCustomEndpointEl.value.trim();
+   const apiKey = batchApiKeysEl.value.split('\n').map(k => k.trim()).filter(Boolean)[0];
+
+   if (!endpoint) {
+       alert('请输入接口地址');
+       return;
+   }
+   if (!apiKey) {
+       alert('请输入至少一个API密钥用于获取模型');
+       return;
+   }
+
+   fetchBatchModelsBtn.textContent = '获取中...';
+   fetchBatchModelsBtn.disabled = true;
+
+   try {
+       const models = await api.fetchModels(endpoint, apiKey);
+       batchModelSelectEl.innerHTML = '';
+       if (models.length > 0) {
+           models.forEach(model => {
+               const option = document.createElement('option');
+               option.value = model.id;
+               option.textContent = model.id;
+               batchModelSelectEl.appendChild(option);
+           });
+       } else {
+           alert('未能获取到模型列表，您可以尝试手动输入模型名称。');
+       }
+   } catch (error) {
+       alert(`获取模型失败: ${error.message}。您可以切换到手动输入模式。`);
+       logger.error('获取批量检测模型失败', error);
+   } finally {
+       fetchBatchModelsBtn.textContent = '获取模型';
+       fetchBatchModelsBtn.disabled = false;
+   }
+}
+
+fetchBatchModelsBtn.addEventListener('click', fetchBatchModels);
+
+toggleBatchModelBtn.addEventListener('click', () => {
+   const isSelectVisible = batchModelSelectEl.style.display !== 'none';
+   if (isSelectVisible) {
+       batchModelSelectEl.style.display = 'none';
+       batchModelInputEl.style.display = 'inline-block';
+       toggleBatchModelBtn.textContent = '选择模型';
+   } else {
+       batchModelSelectEl.style.display = 'inline-block';
+       batchModelInputEl.style.display = 'none';
+       toggleBatchModelBtn.textContent = '手动输入';
+   }
+});
+
+// 初始化时设置手动输入模型的默认值
+batchModelInputEl.value = 'gpt-3.5-turbo';
 
 logger.info('批量检测模块已加载');
