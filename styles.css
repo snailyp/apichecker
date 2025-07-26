@@ -1065,3 +1065,20 @@ html {
   color: #dc3545;
   font-weight: bold;
 }
+
+/* URL 预览样式 */
+.url-preview {
+  margin-top: 5px;
+  margin-bottom: 10px;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  word-break: break-all;
+  display: none;
+}
+
+#batchUrlPreview {
+  margin-bottom: 10px;
+}

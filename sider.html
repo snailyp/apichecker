@@ -129,7 +129,15 @@
           <option value="siliconflow">Siliconflow</option>
           <option value="xai">xAI</option>
           <option value="openrouter">OpenRouter</option>
+          <option value="custom">自定义</option>
         </select>
+        <div id="batch-custom-provider-options" style="display: none;">
+          <label for="batchCustomEndpoint">接口地址:</label>
+          <input type="text" id="batchCustomEndpoint" placeholder="例如: https://api.example.com">
+          <div id="batchUrlPreview" class="url-preview"></div>
+          <label for="batchModelInput">测试模型:</label>
+          <input type="text" id="batchModelInput" placeholder="例如: gpt-3.5-turbo">
+        </div>
         <label for="concurrencyLimit">并行检测数量:</label>
         <input type="number" id="concurrencyLimit" value="5" min="1" />
         <div class="batch-action-buttons">

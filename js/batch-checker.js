@@ -8,6 +8,10 @@ const copyResultsBtn = document.getElementById('copyResultsBtn');
 const batchResultsEl = document.getElementById('batchResults');
 const batchProviderEl = document.getElementById('batchProvider');
 const tidyKeysBtn = document.getElementById('tidyKeysBtn');
+const batchCustomProviderOptions = document.getElementById('batch-custom-provider-options');
+const batchCustomEndpointEl = document.getElementById('batchCustomEndpoint');
+const batchModelInputEl = document.getElementById('batchModelInput');
+const batchUrlPreviewEl = document.getElementById('batchUrlPreview');
 
 const keyCheckMap = {
   openai: api.checkOpenAIKey,
@@ -18,6 +22,14 @@ const keyCheckMap = {
   siliconflow: api.checkSiliconflowKey,
   xai: api.checkXAIKey,
   openrouter: api.checkOpenRouterKey,
+  custom: (key) => {
+    const endpoint = batchCustomEndpointEl.value;
+    const model = batchModelInputEl.value;
+    if (!endpoint) {
+      return { success: false, message: '请输入自定义接口地址' };
+    }
+    return api.checkCustomEndpoint(endpoint, key, model ? model : undefined);
+  }
 };
 
 /**
@@ -276,5 +288,32 @@ function tidyKeys() {
 }
 
 tidyKeysBtn.addEventListener('click', tidyKeys);
+
+// 更新请求URL预览
+function updateBatchRequestUrlPreview(endpoint) {
+  if (!batchUrlPreviewEl) return;
+
+  if (endpoint) {
+    const processedEndpoint = endpoint.endsWith("/") ? endpoint : endpoint + "/v1/";
+    const fullUrl = `${processedEndpoint}chat/completions`;
+    batchUrlPreviewEl.textContent = `实际请求地址: ${fullUrl}`;
+    batchUrlPreviewEl.style.display = "block";
+  } else {
+    batchUrlPreviewEl.style.display = "none";
+  }
+}
+
+batchProviderEl.addEventListener('change', () => {
+  if (batchProviderEl.value === 'custom') {
+    batchCustomProviderOptions.style.display = 'block';
+  } else {
+    batchCustomProviderOptions.style.display = 'none';
+  }
+});
+
+// 监听自定义接口地址输入框变化
+batchCustomEndpointEl.addEventListener('input', () => {
+  updateBatchRequestUrlPreview(batchCustomEndpointEl.value.trim());
+});
 
 logger.info('批量检测模块已加载');
