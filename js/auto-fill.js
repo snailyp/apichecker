@@ -58,6 +58,11 @@ export async function autoDetectKeysAndUrls() {
       // 激活批量检测区段
       activateSection("batch-check-section");
       batchApiKeysEl.value = uniqueKeys.join('\n');
+      
+      // 触发行号更新
+      const inputEvent = new Event('input', { bubbles: true });
+      batchApiKeysEl.dispatchEvent(inputEvent);
+      
       resultDiv.innerHTML = `✅ 已找到并填充 ${uniqueKeys.length} 个密钥到批量检测框。`;
     } else {
       resultDiv.innerHTML = `⚠️ 在页面中未找到与所选厂商 [${provider}] 匹配的 API 密钥。`;

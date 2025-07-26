@@ -979,16 +979,63 @@ html {
   gap: 10px;
 }
 
-#batchApiKeys {
-  width: 100%;
-  padding: 8px 12px;
+/* 带行号的编辑器容器 */
+.line-numbered-editor {
+  position: relative;
+  display: flex;
   border: 1px solid #dadce0;
   border-radius: 6px;
+  background-color: #fff;
+  overflow: hidden;
+}
+
+/* 行号区域 */
+.line-numbers {
+  background-color: #f8f9fa;
+  border-right: 1px solid #e9ecef;
+  padding: 8px 4px 8px 8px;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #6c757d;
+  user-select: none;
+  white-space: pre;
+  min-width: 30px;
+  max-width: 50px;
+  text-align: right;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  flex-shrink: 0;
   box-sizing: border-box;
+  min-height: 150px;
+}
+
+/* 文本输入区域 */
+.line-numbered-editor #batchApiKeys {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 8px 12px;
   font-size: 14px;
   font-family: monospace;
+  line-height: 1.5;
   resize: vertical;
   min-height: 150px;
+  background-color: transparent;
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre;
+  word-wrap: break-word;
+}
+
+/* 确保滚动同步 */
+.line-numbered-editor #batchApiKeys:focus {
+  outline: none;
+}
+
+.line-numbered-editor:focus-within {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
 #concurrencyLimit {

@@ -3,6 +3,7 @@ import * as logger from './logger.js';
 import { showNotification } from './ui-utils.js';
 
 const batchApiKeysEl = document.getElementById('batchApiKeys');
+const batchLineNumbersEl = document.getElementById('batchLineNumbers');
 const concurrencyLimitEl = document.getElementById('concurrencyLimit');
 const startBatchCheckBtn = document.getElementById('startBatchCheckBtn');
 const copyResultsBtn = document.getElementById('copyResultsBtn');
@@ -393,6 +394,12 @@ function tidyKeys() {
   // 去重并格式化
   const uniqueKeys = [...new Set(keys)];
   batchApiKeysEl.value = uniqueKeys.join('\n');
+  
+  // 整理后更新行号
+  setTimeout(() => {
+    updateLineNumbers();
+  }, 0);
+  
   logger.info(`整理了 ${uniqueKeys.length} 个密钥`, { provider });
 }
 
@@ -480,5 +487,109 @@ toggleBatchModelBtn.addEventListener('click', () => {
 
 // 初始化时设置手动输入模型的默认值
 batchModelInputEl.value = 'gpt-3.5-turbo';
+
+// 存储上次的行数，避免不必要的更新
+let lastLineCount = 0;
+
+// 行号功能
+function updateLineNumbers() {
+    if (!batchLineNumbersEl || !batchApiKeysEl) return;
+    
+    const text = batchApiKeysEl.value;
+    const lines = text.split('\n');
+    const lineCount = lines.length;
+    
+    // 只有行数变化时才更新行号
+    if (lineCount === lastLineCount) return;
+    lastLineCount = lineCount;
+    
+    let lineNumbersHtml = '';
+    for (let i = 1; i <= lineCount; i++) {
+        lineNumbersHtml += i + '\n';
+    }
+    
+    batchLineNumbersEl.textContent = lineNumbersHtml;
+    
+    // 根据行数动态调整行号区域宽度
+    const maxDigits = lineCount.toString().length;
+    const minWidth = Math.max(35, maxDigits * 9 + 16); // 调整宽度计算
+    batchLineNumbersEl.style.minWidth = minWidth + 'px';
+    batchLineNumbersEl.style.maxWidth = Math.min(65, minWidth) + 'px';
+}
+
+// 同步滚动
+function syncScroll() {
+    if (!batchLineNumbersEl || !batchApiKeysEl) return;
+    batchLineNumbersEl.scrollTop = batchApiKeysEl.scrollTop;
+}
+
+// 初始化行号
+function initLineNumbers() {
+    if (!batchApiKeysEl || !batchLineNumbersEl) return;
+    
+    // 同步高度
+    function syncHeight() {
+        const textareaHeight = batchApiKeysEl.offsetHeight;
+        batchLineNumbersEl.style.height = textareaHeight + 'px';
+    }
+    
+    // 初始显示行号和同步高度
+    updateLineNumbers();
+    syncHeight();
+    
+    // 监听输入事件 - 只在行数变化时更新
+    batchApiKeysEl.addEventListener('input', () => {
+        updateLineNumbers();
+        syncHeight();
+    });
+    
+    // 监听滚动事件 - 直接同步，不使用requestAnimationFrame避免延迟
+    batchApiKeysEl.addEventListener('scroll', syncScroll, { passive: true });
+    
+    // 监听键盘事件（处理回车、删除等可能改变行数的操作）
+    batchApiKeysEl.addEventListener('keydown', (e) => {
+        // 只在可能改变行数的按键时延迟更新
+        if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
+            setTimeout(() => {
+                updateLineNumbers();
+                syncHeight();
+            }, 0);
+        }
+    });
+    
+    // 监听粘贴事件
+    batchApiKeysEl.addEventListener('paste', () => {
+        setTimeout(() => {
+            updateLineNumbers();
+            syncHeight();
+        }, 0);
+    });
+    
+    // 监听剪切事件
+    batchApiKeysEl.addEventListener('cut', () => {
+        setTimeout(() => {
+            updateLineNumbers();
+            syncHeight();
+        }, 0);
+    });
+    
+    // 监听 textarea 大小变化
+    if (window.ResizeObserver) {
+        const resizeObserver = new ResizeObserver(() => {
+            syncHeight();
+        });
+        resizeObserver.observe(batchApiKeysEl);
+    }
+}
+
+// 页面加载完成后初始化行号
+document.addEventListener('DOMContentLoaded', initLineNumbers);
+
+// 如果DOM已经加载完成，立即初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLineNumbers);
+} else {
+    initLineNumbers();
+}
 
 logger.info('批量检测模块已加载');

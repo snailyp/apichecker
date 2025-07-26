@@ -117,7 +117,10 @@
       <div class="section" id="batch-check-section">
         <div class="section-title">批量密钥检测</div>
         <label for="batchApiKeys">API 密钥 (每行一个):</label>
-        <textarea id="batchApiKeys" rows="10" placeholder="请在此处粘贴您的API密钥，每行一个。"></textarea>
+        <div class="line-numbered-editor">
+          <div class="line-numbers" id="batchLineNumbers"></div>
+          <textarea id="batchApiKeys" rows="10" placeholder="请在此处粘贴您的API密钥，每行一个。"></textarea>
+        </div>
         <label for="batchProvider">选择厂商:</label>
         <select id="batchProvider">
           <option value="auto">自动检测</option>
