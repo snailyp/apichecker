@@ -12,9 +12,12 @@ import { loadModelList } from './model-manager.js';
  */
 export async function autoDetectKeysAndUrls() {
   const resultDiv = document.getElementById("result");
-  if (!resultDiv) return;
+  const batchApiKeysEl = document.getElementById('batchApiKeys');
+  const batchProviderEl = document.getElementById('batchProvider');
+
+  if (!resultDiv || !batchApiKeysEl || !batchProviderEl) return;
   
-  resultDiv.innerHTML = "正在搜索 API 密钥和接口地址...";
+  resultDiv.innerHTML = "正在从当前页面搜索 API 密钥...";
 
   try {
     // 获取当前活动标签页
@@ -26,111 +29,40 @@ export async function autoDetectKeysAndUrls() {
     // 在页面上执行脚本获取文本内容
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => {
-        // 只获取 body 内的文本内容
-        const bodyText = document.body.innerText;
-        return {
-          text: document.documentElement.innerText,
-          bodyText: bodyText,
-        };
-      },
+      func: () => document.documentElement.innerText,
     });
 
-    // 存储找到的所有密钥
-    const foundKeys = {};
+    const pageText = result;
+    const provider = batchProviderEl.value;
+    let foundKeys = [];
 
-    // 搜索所有类型的密钥
-    for (const [platform, pattern] of Object.entries(KEY_PATTERNS)) {
-      const matches = [...new Set(result.text.match(pattern) || [])];
-      if (matches.length > 0) {
-        foundKeys[platform] = matches;
+    if (provider === 'auto') {
+      // 自动检测所有类型的 key
+      for (const keyType in KEY_PATTERNS) {
+        const pattern = KEY_PATTERNS[keyType];
+        const matches = pageText.match(pattern) || [];
+        foundKeys.push(...matches);
       }
-    }
-
-    // 搜索接口地址
-    const foundUrls = [...new Set(result.bodyText.match(URL_PATTERN) || [])];
-
-    // 处理找到的接口地址
-    if (foundUrls.length > 0) {
-      // 激活自定义接口区段
-      activateSection("custom-section");
-
-      const customEndpointInput = document.getElementById("customEndpoint");
-      if (customEndpointInput) {
-        // 创建URL选择区域
-        const urlSelectionDiv = createUrlSelectionArea(foundUrls);
-        
-        // 移除已存在的URL选择区域（如果有）
-        const existingUrlSelection = customEndpointInput.parentNode.querySelector(".url-selection");
-        if (existingUrlSelection) {
-          existingUrlSelection.remove();
-        }
-
-        // 将新的URL选择区域插入到输入框后面
-        customEndpointInput.parentNode.insertBefore(
-          urlSelectionDiv,
-          customEndpointInput.nextSibling
-        );
-
-        // 为URL选择区域中的每个URL添加点击事件
-        addUrlSelectionListeners(urlSelectionDiv, customEndpointInput);
-      }
-    }
-
-    // 处理找到的密钥
-    const platformMap = {
-      openai: "openaiKey",
-      claude: "claudeKey",
-      gemini: "geminiKey",
-      deepseek: "deepseekKey",
-      groq: "groqKey",
-      siliconflow: "siliconflowKey",
-      xai: "xaiKey",
-      custom: "customApiKey",
-    };
-
-    // 清除之前的选择区域
-    document.querySelectorAll(".key-selection").forEach((el) => el.remove());
-
-    // 为每个平台创建密钥选择区域
-    for (const [platform, keys] of Object.entries(foundKeys)) {
-      if (keys.length > 0) {
-        const inputId = platformMap[platform];
-        const input = document.getElementById(inputId);
-        
-        if (input) {
-          // 创建选择区域
-          const selectionDiv = createKeySelectionArea(keys);
-          
-          // 将选择区域插入到输入框后面
-          input.parentNode.insertBefore(selectionDiv, input.nextSibling);
-          
-          // 为密钥选择区域中的每个密钥添加点击事件
-          addKeySelectionListeners(selectionDiv, input, platform);
-        }
-      }
-    }
-
-    // 更新结果显示
-    const totalKeys = Object.values(foundKeys).reduce(
-      (sum, keys) => sum + keys.length,
-      0
-    );
-    
-    const message = [];
-    if (totalKeys > 0) {
-      message.push(`✅ 已找到 ${totalKeys} 个 API 密钥`);
-    }
-    if (foundUrls.length > 0) {
-      message.push(`✅ 已找到 ${foundUrls.length} 个接口地址`);
-    }
-    
-    if (message.length > 0) {
-      message.push("请点击选择要使用的项目");
-      resultDiv.innerHTML = message.join("，");
     } else {
-      resultDiv.innerHTML = "⚠️ 未在页面中找到任何 API 密钥或接口地址";
+      // 只检测指定厂商的 key
+      const pattern = KEY_PATTERNS[provider];
+      if (pattern) {
+        foundKeys = pageText.match(pattern) || [];
+      }
     }
+
+    // 去重并填充到批量检测输入框
+    const uniqueKeys = [...new Set(foundKeys)];
+    
+    if (uniqueKeys.length > 0) {
+      // 激活批量检测区段
+      activateSection("batch-check-section");
+      batchApiKeysEl.value = uniqueKeys.join('\n');
+      resultDiv.innerHTML = `✅ 已找到并填充 ${uniqueKeys.length} 个密钥到批量检测框。`;
+    } else {
+      resultDiv.innerHTML = `⚠️ 在页面中未找到与所选厂商 [${provider}] 匹配的 API 密钥。`;
+    }
+
   } catch (error) {
     resultDiv.innerHTML = `❌ 自动识别失败：${error.message}`;
     console.error("自动识别错误:", error);
