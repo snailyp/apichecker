@@ -1,5 +1,6 @@
 import * as api from './api-services.js';
 import * as logger from './logger.js';
+import { showNotification } from './ui-utils.js';
 
 const batchApiKeysEl = document.getElementById('batchApiKeys');
 const concurrencyLimitEl = document.getElementById('concurrencyLimit');
@@ -15,6 +16,12 @@ const batchModelInputEl = document.getElementById('batchModelInput');
 const fetchBatchModelsBtn = document.getElementById('fetchBatchModelsBtn');
 const toggleBatchModelBtn = document.getElementById('toggleBatchModelBtn');
 const batchUrlPreviewEl = document.getElementById('batchUrlPreview');
+const batchProgressContainer = document.getElementById('batchProgressContainer');
+const batchProgressBar = document.getElementById('batchProgressBar');
+const batchProgressText = document.getElementById('batchProgressText');
+const batchStatsEl = document.getElementById('batch-stats');
+const validCountEl = document.getElementById('valid-count');
+const invalidCountEl = document.getElementById('invalid-count');
 
 const keyCheckMap = {
   openai: api.checkOpenAIKey,
@@ -69,6 +76,17 @@ async function startBatchCheck() {
   let activeChecks = 0;
   const queue = [...keys];
   const results = [];
+  let completedChecks = 0;
+  let validCount = 0;
+  let invalidCount = 0;
+
+  // 重置并显示进度条和统计信息
+  batchStatsEl.style.display = 'block';
+  validCountEl.textContent = '0';
+  invalidCountEl.textContent = '0';
+  batchProgressContainer.style.display = 'block';
+  batchProgressBar.style.width = '0%';
+  batchProgressText.textContent = `0 / ${keys.length}`;
 
   batchResultsEl.innerHTML = `
     <h3>检测结果 (共 ${keys.length} 个密钥)</h3>
@@ -78,8 +96,8 @@ async function startBatchCheck() {
           <th>#</th>
           <th>密钥 (部分)</th>
           <th>类型</th>
-          <th>状态</th>
-          <th id="balance-header" style="cursor: pointer;">余额 ↕️</th>
+          <th id="status-header" style="cursor: pointer;">状态<span class="sort-indicator"></span></th>
+          <th id="balance-header" style="cursor: pointer;">余额<span class="sort-indicator"></span></th>
           <th>模型</th>
           <th>信息</th>
         </tr>
@@ -115,6 +133,23 @@ async function startBatchCheck() {
       results.push({ key, type, row, status: 'pending' });
   });
 
+
+  function updateProgress() {
+    completedChecks++;
+    const percentage = (completedChecks / keys.length) * 100;
+    batchProgressBar.style.width = `${percentage}%`;
+    batchProgressText.textContent = `${completedChecks} / ${keys.length}`;
+  }
+
+  function updateStats(isValid) {
+    if (isValid) {
+      validCount++;
+      validCountEl.textContent = validCount;
+    } else {
+      invalidCount++;
+      invalidCountEl.textContent = invalidCount;
+    }
+  }
 
   const checkKey = async (keyData, index) => {
     const { key, type, row } = keyData;
@@ -158,6 +193,9 @@ async function startBatchCheck() {
             : batchModelInputEl.value;
         modelCell.textContent = model || 'N/A';
     }
+
+    updateProgress();
+    updateStats(result.success);
   };
 
   const worker = async () => {
@@ -179,10 +217,23 @@ async function startBatchCheck() {
   await Promise.all(workers);
   logger.info('批量检测完成', { total: keys.length });
 
+  // 隐藏进度条
+  setTimeout(() => {
+      batchProgressContainer.style.display = 'none';
+      batchStatsEl.style.display = 'none';
+  }, 1000);
+
+  // 默认按状态和余额排序
+  sortResults('status');
+
   // 添加排序事件监听器
   const balanceHeader = document.getElementById('balance-header');
   if (balanceHeader) {
       balanceHeader.addEventListener('click', () => sortResults('balance'));
+  }
+  const statusHeader = document.getElementById('status-header');
+  if (statusHeader) {
+      statusHeader.addEventListener('click', () => sortResults('status'));
   }
 }
 
@@ -190,38 +241,80 @@ let sortDirection = {};
 
 function sortResults(column) {
     const tbody = document.getElementById('batch-results-tbody');
+    if (!tbody) return;
     const rows = Array.from(tbody.querySelectorAll('tr'));
 
-    // 初始化或切换排序方向
-    sortDirection[column] = sortDirection[column] === 'asc' ? 'desc' : 'asc';
+    // Set default direction if not set
+    if (!sortDirection[column]) {
+        sortDirection[column] = 'desc';
+    } else {
+        sortDirection[column] = sortDirection[column] === 'asc' ? 'desc' : 'asc';
+    }
     const direction = sortDirection[column];
 
-    rows.sort((a, b) => {
-        let valA, valB;
+    // Reset other column directions
+    for (const key in sortDirection) {
+        if (key !== column) {
+            delete sortDirection[key];
+        }
+    }
+    
+    // Update UI
+    document.querySelectorAll('.sort-indicator').forEach(el => el.textContent = '');
+    const header = document.getElementById(`${column}-header`);
+    if (header) {
+        const indicator = header.querySelector('.sort-indicator');
+        if (indicator) {
+            indicator.textContent = direction === 'asc' ? ' ▲' : ' ▼';
+        }
+    }
 
+    const statusOrder = { '有效': 0, '无效': 1, '检测中...': 2, '等待检测...': 3 };
+
+    rows.sort((a, b) => {
+        // Always prioritize by status first
+        const statusTextA = a.cells[3].textContent.trim();
+        const statusTextB = b.cells[3].textContent.trim();
+        const statusA = statusOrder[statusTextA] ?? 99;
+        const statusB = statusOrder[statusTextB] ?? 99;
+
+        if (statusA < statusB) return -1;
+        if (statusA > statusB) return 1;
+
+        // If status is the same, sort by the selected column
+        let valA, valB;
         if (column === 'balance') {
             valA = parseFloat(a.dataset.balance);
             valB = parseFloat(b.dataset.balance);
-            // 将 N/A (-1) 视为最低优先级
-            if (valA === -1) valA = direction === 'asc' ? -Infinity : Infinity;
-            if (valB === -1) valB = direction === 'asc' ? -Infinity : Infinity;
+            // N/A (-1) is always at the bottom
+            if (valA === -1) valA = -Infinity;
+            if (valB === -1) valB = -Infinity;
+        } else if (column === 'status') {
+            // Already sorted by status, so we can use a secondary sort, e.g. balance
+            valA = parseFloat(a.dataset.balance);
+            valB = parseFloat(b.dataset.balance);
+            if (valA === -1) valA = -Infinity;
+            if (valB === -1) valB = -Infinity;
         } else {
-            // 可以扩展到其他列的排序
-            const cellIndex = Array.from(a.parentElement.children).indexOf(a);
-            valA = a.cells[cellIndex].textContent.trim();
-            valB = b.cells[cellIndex].textContent.trim();
+            return 0; // Not sorting by other columns in this version
         }
 
+        let comparison = 0;
         if (valA < valB) {
-            return direction === 'asc' ? -1 : 1;
+            comparison = -1;
+        } else if (valA > valB) {
+            comparison = 1;
         }
-        if (valA > valB) {
-            return direction === 'asc' ? 1 : -1;
+        
+        let effectiveDirection = direction;
+        // When sorting by status, we want higher balance first, so descending.
+        if (column === 'status') {
+            effectiveDirection = 'desc';
         }
-        return 0;
+
+        return effectiveDirection === 'asc' ? comparison : -comparison;
     });
 
-    // 重新渲染表格
     tbody.innerHTML = '';
     rows.forEach(row => tbody.appendChild(row));
 }
@@ -238,7 +331,7 @@ function copyResults() {
     }).filter(Boolean);
 
     if (validKeys.length === 0) {
-        alert('没有可复制的有效密钥。');
+        showNotification('没有可复制的有效密钥。', 'error');
         return;
     }
 
@@ -264,9 +357,9 @@ function copyResults() {
     }
 
     navigator.clipboard.writeText(clipboardText.trim()).then(() => {
-        alert('已复制并分组的有效密钥！');
+        showNotification('已复制并分组的有效密钥！', 'success');
     }, () => {
-        alert('复制失败！');
+        showNotification('复制失败！', 'error');
     });
 }
 
@@ -337,11 +430,11 @@ async function fetchBatchModels() {
    const apiKey = batchApiKeysEl.value.split('\n').map(k => k.trim()).filter(Boolean)[0];
 
    if (!endpoint) {
-       alert('请输入接口地址');
+       showNotification('请输入接口地址', 'error');
        return;
    }
    if (!apiKey) {
-       alert('请输入至少一个API密钥用于获取模型');
+       showNotification('请输入至少一个API密钥用于获取模型', 'error');
        return;
    }
 
@@ -359,10 +452,10 @@ async function fetchBatchModels() {
                batchModelSelectEl.appendChild(option);
            });
        } else {
-           alert('未能获取到模型列表，您可以尝试手动输入模型名称。');
+           showNotification('未能获取到模型列表，您可以尝试手动输入模型名称。', 'info');
        }
    } catch (error) {
-       alert(`获取模型失败: ${error.message}。您可以切换到手动输入模式。`);
+       showNotification(`获取模型失败: ${error.message}。您可以切换到手动输入模式。`, 'error');
        logger.error('获取批量检测模型失败', error);
    } finally {
        fetchBatchModelsBtn.textContent = '获取模型';

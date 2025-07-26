@@ -150,6 +150,14 @@
           <button type="button" id="tidyKeysBtn">整理</button>
           <button type="button" id="copyResultsBtn">复制结果</button>
         </div>
+        <div id="batch-stats" style="display: none; margin-top: 10px; font-size: 14px; font-weight: bold;">
+          <span style="color: #28a745;">有效: <span id="valid-count">0</span></span>
+          <span style="margin-left: 15px; color: #dc3545;">无效: <span id="invalid-count">0</span></span>
+        </div>
+        <div class="progress-container" id="batchProgressContainer" style="display: none;">
+          <div class="progress-bar" id="batchProgressBar"></div>
+          <div class="progress-text" id="batchProgressText"></div>
+        </div>
         <div id="batchResults"></div>
       </div>
 
@@ -196,5 +204,7 @@
     </div>
     <script type="module" src="/js/app.js"></script>
     <script type="module" src="/js/batch-checker.js"></script>
+<!-- 添加通知容器 -->
+    <div id="notification-container" class="notification-container"></div>
   </body>
 </html>

@@ -316,3 +316,37 @@ export function createUrlSelectionArea(urls, title = "检测到的接口地址�
 
   return urlSelectionDiv;
 }
+
+/**
+ * 显示一个自定义通知
+ * @param {string} message - 通知内容
+ * @param {string} type - 通知类型 (success, error, info)
+ * @param {number} duration - 显示时长（毫秒）
+ */
+export function showNotification(message, type = "info", duration = 3000) {
+  const container = document.getElementById("notification-container");
+  if (!container) {
+    console.error("Notification container not found!");
+    return;
+  }
+
+  const notification = document.createElement("div");
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+
+  container.appendChild(notification);
+
+  // Animate in
+  setTimeout(() => {
+    notification.classList.add("show");
+  }, 10);
+
+  // Animate out and remove
+  setTimeout(() => {
+    notification.classList.remove("show");
+    notification.classList.add("hide");
+    notification.addEventListener("transitionend", () => {
+      notification.remove();
+    });
+  }, duration);
+}
