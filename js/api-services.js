@@ -316,17 +316,30 @@ export async function checkSiliconflowKey(apiKey) {
 
     if (completionResponse.ok) {
       let balance = null;
+      let chargeBalance = null;
+      let giftBalance = null;
       let message = "✅ Siliconflow API 密钥有效。";
+      
       try {
         const balanceResult = await checkSiliconflowBalance(apiKey);
         if (balanceResult.success) {
           balance = parseFloat(balanceResult.data.totalBalance);
-          message += ` 总余额: ${balanceResult.data.totalBalance} CNY`;
+          chargeBalance = parseFloat(balanceResult.data.chargeBalance);
+          giftBalance = parseFloat(balanceResult.data.giftBalance);
+          message += ` 总余额: ${balanceResult.data.totalBalance} CNY (充值: ${balanceResult.data.chargeBalance} CNY, 赠送: ${balanceResult.data.giftBalance} CNY)`;
         }
       } catch (e) {
         logger.warn('查询Siliconflow余额失败', e);
       }
-      return { success: true, message, isPaid: true, balance };
+      
+      return {
+        success: true,
+        message,
+        isPaid: true,
+        balance,
+        chargeBalance,
+        giftBalance
+      };
     } else {
       const errorData = await completionResponse.json();
       return { success: false, message: `❌ Siliconflow API 错误：${errorData.error?.message || "未知错误"}` };

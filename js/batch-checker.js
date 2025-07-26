@@ -98,7 +98,9 @@ async function startBatchCheck() {
           <th>密钥 (部分)</th>
           <th>类型</th>
           <th id="status-header" style="cursor: pointer;">状态<span class="sort-indicator"></span></th>
-          <th id="balance-header" style="cursor: pointer;">余额<span class="sort-indicator"></span></th>
+          <th id="balance-header" style="cursor: pointer;">总余额<span class="sort-indicator"></span></th>
+          <th id="charge-balance-header" style="cursor: pointer;">充值余额<span class="sort-indicator"></span></th>
+          <th id="gift-balance-header" style="cursor: pointer;">赠送余额<span class="sort-indicator"></span></th>
           <th>模型</th>
           <th>信息</th>
         </tr>
@@ -120,6 +122,8 @@ async function startBatchCheck() {
       <td>${type || '未知'}</td>
       <td class="status-${status}">${status}</td>
       <td class="balance-cell">N/A</td>
+      <td class="charge-balance-cell">N/A</td>
+      <td class="gift-balance-cell">N/A</td>
       <td class="model-cell"></td>
       <td>${message}</td>
     `;
@@ -156,8 +160,10 @@ async function startBatchCheck() {
     const { key, type, row } = keyData;
     const statusCell = row.cells[3];
     const balanceCell = row.cells[4];
-    const modelCell = row.cells[5];
-    const messageCell = row.cells[6];
+    const chargeBalanceCell = row.cells[5];
+    const giftBalanceCell = row.cells[6];
+    const modelCell = row.cells[7];
+    const messageCell = row.cells[8];
 
     statusCell.textContent = '检测中...';
     statusCell.className = 'status-checking';
@@ -175,24 +181,59 @@ async function startBatchCheck() {
     keyData.message = result.message;
     keyData.isPaid = result.isPaid;
     keyData.balance = result.balance;
+    keyData.chargeBalance = result.chargeBalance;
+    keyData.giftBalance = result.giftBalance;
+    
     row.dataset.isPaid = result.isPaid;
-    row.dataset.balance = result.balance ?? -1; // 使用 ?? 来处理 undefined 或 null
+    row.dataset.balance = result.balance ?? -1;
+    row.dataset.chargeBalance = result.chargeBalance ?? -1;
+    row.dataset.giftBalance = result.giftBalance ?? -1;
 
     statusCell.textContent = result.success ? '有效' : '无效';
     statusCell.className = result.success ? 'status-valid' : 'status-invalid';
+    
+    // 显示总余额
     if (result.balance !== undefined && result.balance !== null) {
         balanceCell.textContent = result.balance.toFixed(4);
     } else {
         balanceCell.textContent = 'N/A';
     }
+    
+    // 显示充值余额（仅对siliconflow显示）
+    if (type === 'siliconflow' && result.chargeBalance !== undefined && result.chargeBalance !== null) {
+        chargeBalanceCell.textContent = result.chargeBalance.toFixed(4);
+    } else {
+        chargeBalanceCell.textContent = type === 'siliconflow' ? '0.0000' : 'N/A';
+    }
+    
+    // 显示赠送余额（仅对siliconflow显示）
+    if (type === 'siliconflow' && result.giftBalance !== undefined && result.giftBalance !== null) {
+        giftBalanceCell.textContent = result.giftBalance.toFixed(4);
+    } else {
+        giftBalanceCell.textContent = type === 'siliconflow' ? '0.0000' : 'N/A';
+    }
+    
     messageCell.innerHTML = result.message;
 
-    // 如果是自定义类型，显示测试时使用的模型
+    // 显示测试时使用的模型
     if (type === 'custom') {
         const model = batchModelSelectEl.style.display !== 'none'
             ? batchModelSelectEl.value
             : batchModelInputEl.value;
         modelCell.textContent = model || 'N/A';
+    } else {
+        // 为其他API类型显示默认测试模型
+        const defaultModels = {
+            'openai': 'gpt-4o',
+            'claude': 'claude-3-5-sonnet-20241022',
+            'gemini': 'gemini-1.5-flash',
+            'deepseek': 'deepseek-chat',
+            'groq': 'llama-3.3-70b-versatile',
+            'siliconflow': 'Qwen/Qwen2.5-72B-Instruct',
+            'xai': 'grok-3-mini',
+            'openrouter': 'openrouter/auto'
+        };
+        modelCell.textContent = defaultModels[type] || 'N/A';
     }
 
     updateProgress();
@@ -224,13 +265,21 @@ async function startBatchCheck() {
       batchStatsEl.style.display = 'none';
   }, 1000);
 
-  // 默认按状态和余额排序
-  sortResults('status');
+  // 默认按充值余额优先级排序
+  sortResults('chargeBalance');
 
   // 添加排序事件监听器
   const balanceHeader = document.getElementById('balance-header');
   if (balanceHeader) {
       balanceHeader.addEventListener('click', () => sortResults('balance'));
+  }
+  const chargeBalanceHeader = document.getElementById('charge-balance-header');
+  if (chargeBalanceHeader) {
+      chargeBalanceHeader.addEventListener('click', () => sortResults('chargeBalance'));
+  }
+  const giftBalanceHeader = document.getElementById('gift-balance-header');
+  if (giftBalanceHeader) {
+      giftBalanceHeader.addEventListener('click', () => sortResults('giftBalance'));
   }
   const statusHeader = document.getElementById('status-header');
   if (statusHeader) {
@@ -290,10 +339,22 @@ function sortResults(column) {
             // N/A (-1) is always at the bottom
             if (valA === -1) valA = -Infinity;
             if (valB === -1) valB = -Infinity;
+        } else if (column === 'chargeBalance') {
+            valA = parseFloat(a.dataset.chargeBalance);
+            valB = parseFloat(b.dataset.chargeBalance);
+            // N/A (-1) is always at the bottom
+            if (valA === -1) valA = -Infinity;
+            if (valB === -1) valB = -Infinity;
+        } else if (column === 'giftBalance') {
+            valA = parseFloat(a.dataset.giftBalance);
+            valB = parseFloat(b.dataset.giftBalance);
+            // N/A (-1) is always at the bottom
+            if (valA === -1) valA = -Infinity;
+            if (valB === -1) valB = -Infinity;
         } else if (column === 'status') {
-            // Already sorted by status, so we can use a secondary sort, e.g. balance
-            valA = parseFloat(a.dataset.balance);
-            valB = parseFloat(b.dataset.balance);
+            // For status sorting, use charge balance as secondary sort (siliconflow priority)
+            valA = parseFloat(a.dataset.chargeBalance);
+            valB = parseFloat(b.dataset.chargeBalance);
             if (valA === -1) valA = -Infinity;
             if (valB === -1) valB = -Infinity;
         } else {
@@ -308,7 +369,7 @@ function sortResults(column) {
         }
         
         let effectiveDirection = direction;
-        // When sorting by status, we want higher balance first, so descending.
+        // When sorting by status, we want higher charge balance first, so descending.
         if (column === 'status') {
             effectiveDirection = 'desc';
         }
@@ -327,8 +388,10 @@ function copyResults() {
         const key = row.dataset.fullKey;
         const isPaid = row.dataset.isPaid === 'true';
         const balance = row.dataset.balance;
+        const chargeBalance = row.dataset.chargeBalance;
+        const giftBalance = row.dataset.giftBalance;
         const isValid = row.querySelector('.status-valid');
-        return isValid ? { key, isPaid, balance } : null;
+        return isValid ? { key, isPaid, balance, chargeBalance, giftBalance } : null;
     }).filter(Boolean);
 
     if (validKeys.length === 0) {
@@ -338,8 +401,19 @@ function copyResults() {
 
     const paidKeys = validKeys.filter(k => k.isPaid).map(k => {
         const balanceValue = parseFloat(k.balance);
+        const chargeBalanceValue = parseFloat(k.chargeBalance);
+        const giftBalanceValue = parseFloat(k.giftBalance);
+        
         if (!isNaN(balanceValue) && balanceValue !== -1) {
-            return `${k.key} ---- 余额: ${balanceValue.toFixed(4)}`;
+            let balanceInfo = `总余额: ${balanceValue.toFixed(4)}`;
+            
+            // 如果有充值余额和赠送余额信息（siliconflow），则显示详细信息
+            if (!isNaN(chargeBalanceValue) && chargeBalanceValue !== -1 &&
+                !isNaN(giftBalanceValue) && giftBalanceValue !== -1) {
+                balanceInfo += ` (充值: ${chargeBalanceValue.toFixed(4)}, 赠送: ${giftBalanceValue.toFixed(4)})`;
+            }
+            
+            return `${k.key} ---- ${balanceInfo}`;
         }
         return k.key;
     });
