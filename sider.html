@@ -171,6 +171,7 @@
         <button type="button" id="checkBalanceBtn" title="查询余额">💰</button>
         <button type="button" id="clearButton" title="清空输入">🗑️</button>
         <button type="button" id="historyButton" title="历史记录">📋</button>
+        <button type="button" id="configButton" title="模型配置">⚙️</button>
       </div>
     </form>
 
@@ -209,5 +210,123 @@
     <script type="module" src="/js/batch-checker.js"></script>
 <!-- 添加通知容器 -->
     <div id="notification-container" class="notification-container"></div>
+
+    <!-- 模型配置模态框 -->
+    <div id="configModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>默认测试模型配置</h2>
+          <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="config-section">
+            <label for="openaiModel">OpenAI 默认模型：</label>
+            <div class="model-input-container">
+              <select id="openaiModel">
+                <option value="gpt-4o">gpt-4o</option>
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                <option value="gpt-4">gpt-4</option>
+                <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                <option value="custom">手动输入</option>
+              </select>
+              <input type="text" id="openaiModelCustom" placeholder="输入自定义模型名称" style="display: none;">
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label for="claudeModel">Claude 默认模型：</label>
+            <div class="model-input-container">
+              <select id="claudeModel">
+                <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022</option>
+                <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022</option>
+                <option value="claude-3-opus-20240229">claude-3-opus-20240229</option>
+                <option value="custom">手动输入</option>
+              </select>
+              <input type="text" id="claudeModelCustom" placeholder="输入自定义模型名称" style="display: none;">
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label for="geminiModel">Gemini 默认模型：</label>
+            <div class="model-input-container">
+              <select id="geminiModel">
+                <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                <option value="gemini-2.5-pro-preview-06-05">gemini-2.5-pro-preview-06-05</option>
+                <option value="custom">手动输入</option>
+              </select>
+              <input type="text" id="geminiModelCustom" placeholder="输入自定义模型名称" style="display: none;">
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label for="deepseekModel">Deepseek 默认模型：</label>
+            <div class="model-input-container">
+              <select id="deepseekModel">
+                <option value="deepseek-chat">deepseek-chat</option>
+                <option value="deepseek-coder">deepseek-coder</option>
+                <option value="custom">手动输入</option>
+              </select>
+              <input type="text" id="deepseekModelCustom" placeholder="输入自定义模型名称" style="display: none;">
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label for="groqModel">Groq 默认模型：</label>
+            <div class="model-input-container">
+              <select id="groqModel">
+                <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+                <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile</option>
+                <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+                <option value="custom">手动输入</option>
+              </select>
+              <input type="text" id="groqModelCustom" placeholder="输入自定义模型名称" style="display: none;">
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label for="siliconflowModel">Siliconflow 默认模型：</label>
+            <div class="model-input-container">
+              <select id="siliconflowModel">
+                <option value="Qwen/Qwen2.5-72B-Instruct">Qwen/Qwen2.5-72B-Instruct</option>
+                <option value="Qwen/Qwen2.5-7B-Instruct">Qwen/Qwen2.5-7B-Instruct</option>
+                <option value="deepseek-ai/DeepSeek-V2.5">deepseek-ai/DeepSeek-V2.5</option>
+                <option value="custom">手动输入</option>
+              </select>
+              <input type="text" id="siliconflowModelCustom" placeholder="输入自定义模型名称" style="display: none;">
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label for="xaiModel">xAI 默认模型：</label>
+            <div class="model-input-container">
+              <select id="xaiModel">
+                <option value="grok-3-mini">grok-3-mini</option>
+                <option value="grok-beta">grok-beta</option>
+                <option value="custom">手动输入</option>
+              </select>
+              <input type="text" id="xaiModelCustom" placeholder="输入自定义模型名称" style="display: none;">
+            </div>
+          </div>
+          
+          <div class="config-section">
+            <label for="openrouterModel">OpenRouter 默认模型：</label>
+            <div class="model-input-container">
+              <select id="openrouterModel">
+                <option value="openrouter/auto">openrouter/auto</option>
+                <option value="anthropic/claude-3.5-sonnet">anthropic/claude-3.5-sonnet</option>
+                <option value="openai/gpt-4o">openai/gpt-4o</option>
+                <option value="custom">手动输入</option>
+              </select>
+              <input type="text" id="openrouterModelCustom" placeholder="输入自定义模型名称" style="display: none;">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="saveConfigBtn" class="save-btn">保存配置</button>
+          <button type="button" id="resetConfigBtn" class="reset-btn">重置默认</button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

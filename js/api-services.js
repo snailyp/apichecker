@@ -3,6 +3,7 @@
  */
 
 import * as logger from './logger.js';
+import { getDefaultModel } from './config-manager.js';
 
 // API密钥的正则表达式
 export const KEY_PATTERNS = {
@@ -27,6 +28,7 @@ export const URL_PATTERN = /https?:\/\/[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*(?::\d+)
  */
 export async function checkOpenAIKey(apiKey) {
   try {
+    const defaultModel = getDefaultModel('openai');
     const completionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -34,7 +36,7 @@ export async function checkOpenAIKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -82,6 +84,7 @@ export async function checkOpenAIKey(apiKey) {
  */
 export async function checkClaudeKey(apiKey) {
   try {
+    const defaultModel = getDefaultModel('claude');
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -91,7 +94,7 @@ export async function checkClaudeKey(apiKey) {
         "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -137,8 +140,9 @@ export async function checkClaudeKey(apiKey) {
  */
 export async function checkGeminiKey(apiKey) {
   try {
+    const defaultModel = getDefaultModel('gemini');
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${defaultModel}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -208,6 +212,7 @@ export async function checkGeminiKey(apiKey) {
  */
 export async function checkDeepseekKey(apiKey) {
   try {
+    const defaultModel = getDefaultModel('deepseek');
     const completionResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -215,7 +220,7 @@ export async function checkDeepseekKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -250,6 +255,7 @@ export async function checkDeepseekKey(apiKey) {
  */
 export async function checkGroqKey(apiKey) {
   try {
+    const defaultModel = getDefaultModel('groq');
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -257,7 +263,7 @@ export async function checkGroqKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -301,6 +307,7 @@ export async function checkGroqKey(apiKey) {
  */
 export async function checkSiliconflowKey(apiKey) {
   try {
+    const defaultModel = getDefaultModel('siliconflow');
     const completionResponse = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -308,7 +315,7 @@ export async function checkSiliconflowKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "Qwen/Qwen2.5-72B-Instruct",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -356,6 +363,7 @@ export async function checkSiliconflowKey(apiKey) {
  */
 export async function checkXAIKey(apiKey) {
   try {
+    const defaultModel = getDefaultModel('xai');
     const response = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -363,7 +371,7 @@ export async function checkXAIKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "grok-3-mini",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),
@@ -397,6 +405,7 @@ export async function checkXAIKey(apiKey) {
  */
 export async function checkOpenRouterKey(apiKey) {
   try {
+    const defaultModel = getDefaultModel('openrouter');
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -404,7 +413,7 @@ export async function checkOpenRouterKey(apiKey) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: defaultModel,
         messages: [{ role: "user", content: "Hi" }],
         max_tokens: 10,
       }),

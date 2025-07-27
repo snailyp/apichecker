@@ -4,6 +4,7 @@
 
 import * as ApiService from "./api-services.js";
 import { autoDetectKeysAndUrls } from "./auto-fill.js";
+import { initConfigModal } from "./config-manager.js";
 import { toggleHistoryPanel } from "./history-manager.js";
 import * as logger from "./logger.js";
 import {
@@ -18,6 +19,9 @@ import { getRequestUrl } from "./ui-utils.js";
  * 初始化应用
  */
 function initApp() {
+  // 初始化配置模态框
+  initConfigModal();
+
   // 添加导航菜单事件监听
   initNavigation();
 
