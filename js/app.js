@@ -6,6 +6,7 @@ import * as ApiService from "./api-services.js";
 import { autoDetectKeysAndUrls } from "./auto-fill.js";
 import { getDefaultModel, initConfigModal } from "./config-manager.js";
 import { toggleHistoryPanel } from "./history-manager.js";
+import { HelpSystem } from './help-system.js';
 import * as logger from "./logger.js";
 import {
   copySelectedModels,
@@ -21,6 +22,9 @@ import { getRequestUrl } from "./ui-utils.js";
 function initApp() {
   // 初始化配置模态框
   initConfigModal();
+
+  // 初始化帮助系统
+  new HelpSystem();
 
   // 添加导航菜单事件监听
   initNavigation();
