@@ -83,6 +83,7 @@ async function startBatchCheck() {
 
   // 重置并显示进度条和统计信息
   batchStatsEl.style.display = 'block';
+  batchStatsEl.classList.remove('completed'); // 移除完成状态
   validCountEl.textContent = '0';
   invalidCountEl.textContent = '0';
   batchProgressContainer.style.display = 'block';
@@ -151,11 +152,19 @@ async function startBatchCheck() {
   function updateStats(isValid) {
     if (isValid) {
       validCount++;
-      validCountEl.textContent = validCount;
+      animateCountUpdate(validCountEl, validCount);
     } else {
       invalidCount++;
-      invalidCountEl.textContent = invalidCount;
+      animateCountUpdate(invalidCountEl, invalidCount);
     }
+  }
+
+  function animateCountUpdate(element, newValue) {
+    element.classList.add('updating');
+    setTimeout(() => {
+      element.textContent = newValue;
+      element.classList.remove('updating');
+    }, 200);
   }
 
   const checkKey = async (keyData, index) => {
@@ -261,10 +270,17 @@ async function startBatchCheck() {
   await Promise.all(workers);
   logger.info('批量检测完成', { total: keys.length });
 
-  // 隐藏进度条
+  // 隐藏进度条，但保持统计信息显示
   setTimeout(() => {
       batchProgressContainer.style.display = 'none';
-      batchStatsEl.style.display = 'none';
+      // 不隐藏统计信息，让用户能看到最终结果
+      // batchStatsEl.style.display = 'none';
+      
+      // 添加完成状态的视觉反馈
+      batchStatsEl.classList.add('completed');
+      
+      // 显示完成提示
+      showCompletionSummary(validCount, invalidCount, keys.length);
   }, 1000);
 
   // 默认按充值余额优先级排序
@@ -287,6 +303,15 @@ async function startBatchCheck() {
   if (statusHeader) {
       statusHeader.addEventListener('click', () => sortResults('status'));
   }
+}
+
+function showCompletionSummary(validCount, invalidCount, totalCount) {
+  const successRate = ((validCount / totalCount) * 100).toFixed(1);
+  let message = `检测完成！共检测 ${totalCount} 个密钥，`;
+  message += `有效 ${validCount} 个，无效 ${invalidCount} 个`;
+  message += `（成功率：${successRate}%）`;
+  
+  showNotification(message, validCount > 0 ? 'success' : 'info');
 }
 
 let sortDirection = {};
