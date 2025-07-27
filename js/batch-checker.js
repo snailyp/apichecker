@@ -91,28 +91,30 @@ async function startBatchCheck() {
 
   batchResultsEl.innerHTML = `
     <h3>检测结果 (共 ${keys.length} 个密钥)</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>密钥 (部分)</th>
-          <th>类型</th>
-          <th id="status-header" style="cursor: pointer;">状态<span class="sort-indicator"></span></th>
-          <th id="balance-header" style="cursor: pointer;">总余额<span class="sort-indicator"></span></th>
-          <th id="charge-balance-header" style="cursor: pointer;">充值余额<span class="sort-indicator"></span></th>
-          <th id="gift-balance-header" style="cursor: pointer;">赠送余额<span class="sort-indicator"></span></th>
-          <th>模型</th>
-          <th>信息</th>
-        </tr>
-      </thead>
-      <tbody id="batch-results-tbody">
-      </tbody>
-    </table>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>密钥</th>
+            <th>类型</th>
+            <th id="status-header" style="cursor: pointer;">状态<span class="sort-indicator"></span></th>
+            <th id="balance-header" style="cursor: pointer;">总余额<span class="sort-indicator"></span></th>
+            <th id="charge-balance-header" style="cursor: pointer;">充值余额<span class="sort-indicator"></span></th>
+            <th id="gift-balance-header" style="cursor: pointer;">赠送余额<span class="sort-indicator"></span></th>
+            <th>模型</th>
+            <th>信息</th>
+          </tr>
+        </thead>
+        <tbody id="batch-results-tbody">
+        </tbody>
+      </table>
+    </div>
   `;
   const tbody = document.getElementById('batch-results-tbody');
 
   function renderRow(key, type, status, message, index) {
-    const shortKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+    const shortKey = `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
     const row = document.createElement('tr');
     row.id = `result-row-${index}`;
     row.dataset.fullKey = key; // 存储完整密钥

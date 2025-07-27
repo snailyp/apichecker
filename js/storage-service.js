@@ -9,9 +9,10 @@ import * as logger from './logger.js';
  * @param {string} platform - 平台名称
  * @param {string} key - API密钥
  * @param {string} endpoint - 接口地址（可选）
+ * @param {string} model - 测试模型（可选）
  * @returns {Promise<void>}
  */
-export async function saveValidKey(platform, key, endpoint = "") {
+export async function saveValidKey(platform, key, endpoint = "", model = "") {
   try {
     const history = (await chrome.storage.local.get("validKeys")) || { validKeys: [] };
     const validKeys = history.validKeys || [];
@@ -23,12 +24,15 @@ export async function saveValidKey(platform, key, endpoint = "") {
       platform,
       key,
       endpoint,
+      model,
       timestamp: new Date().toISOString(),
     };
 
     if (existingIndex >= 0) {
-      // 更新现有记录的时间戳
+      // 更新现有记录的时间戳和模型
       validKeys[existingIndex].timestamp = newEntry.timestamp;
+      validKeys[existingIndex].model = newEntry.model;
+      validKeys[existingIndex].endpoint = newEntry.endpoint;
     } else {
       // 添加新记录
       validKeys.push(newEntry);
@@ -64,20 +68,25 @@ export async function getHistoryKeys() {
 }
 
 /**
- * 删除指定索引的历史记录
- * @param {number} index - 要删除的记录索引
+ * 根据时间戳删除历史记录
+ * @param {string} timestamp - 要删除的记录的时间戳
  * @returns {Promise<boolean>} - 是否删除成功
  */
-export async function deleteHistoryKey(index) {
+export async function deleteHistoryKey(timestamp) {
   try {
     const history = await chrome.storage.local.get("validKeys");
-    const validKeys = history.validKeys || [];
+    let validKeys = history.validKeys || [];
     
-    if (index >= 0 && index < validKeys.length) {
-      validKeys.splice(index, 1);
+    const initialLength = validKeys.length;
+    validKeys = validKeys.filter(item => item.timestamp !== timestamp);
+
+    if (validKeys.length < initialLength) {
       await chrome.storage.local.set({ validKeys });
+      logger.info(`删除了时间戳为 ${timestamp} 的历史记录`);
       return true;
     }
+    
+    logger.warn(`未找到时间戳为 ${timestamp} 的历史记录`);
     return false;
   } catch (error) {
     logger.error("删除历史记录失败:", error);

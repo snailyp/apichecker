@@ -8,17 +8,22 @@
  * @param {HTMLElement} button - 触发复制的按钮元素
  * @returns {Promise<boolean>} - 是否复制成功
  */
-export async function copyToClipboard(text, button) {
+export async function copyToClipboard(text, elementToUpdate) {
   try {
     await navigator.clipboard.writeText(text);
-    const originalText = button.innerHTML;
-    button.innerHTML = "已复制!";
-    setTimeout(() => (button.innerHTML = originalText), 1000);
+    if (elementToUpdate) {
+      const originalText = elementToUpdate.innerHTML;
+      elementToUpdate.innerHTML = "已复制!";
+      setTimeout(() => (elementToUpdate.innerHTML = originalText), 1000);
+    }
     return true;
   } catch (err) {
     console.error("复制失败:", err);
-    button.innerHTML = "复制失败!";
-    setTimeout(() => (button.innerHTML = originalText), 1000);
+    if (elementToUpdate) {
+      const originalText = elementToUpdate.innerHTML;
+      elementToUpdate.innerHTML = "复制失败!";
+      setTimeout(() => (elementToUpdate.innerHTML = originalText), 1000);
+    }
     return false;
   }
 }
@@ -188,21 +193,40 @@ export function createHistoryFilters(endpoints, platforms, platformNames) {
  * @param {number} startIndex - 起始索引
  * @returns {string} - 历史记录项HTML
  */
-export function createHistoryItems(items, startIndex = 0) {
-  return items.map((item, index) => {
-    const date = new Date(item.timestamp).toLocaleString("zh-CN");
-    const keyPreview = `${item.key.slice(0, 8)}...${item.key.slice(-8)}`;
-    const absoluteIndex = startIndex + index;
+export function createHistoryItems(items) {
+  if (!items || items.length === 0) {
+    return '<div class="history-empty">暂无历史记录</div>';
+  }
 
+  return items.map((item) => {
+    const date = new Date(item.timestamp).toLocaleString("zh-CN", { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const keyPreview = `${item.key.slice(0, 8)}...${item.key.slice(-8)}`;
+
+    const endpointInfo = item.endpoint ? `<div class="history-endpoint" title="${item.endpoint}">${item.endpoint}</div>` : '';
+    
     return `
-      <div class="history-item" data-key="${item.key}" data-platform="${item.platform}" ${item.endpoint ? `data-endpoint="${item.endpoint}"` : ""}>
-        <div class="history-platform">${item.platformName || item.platform}</div>
-        <div class="history-key">${keyPreview}</div>
-        <div class="history-time">${date}</div>
+      <div class="history-item"
+           data-key="${item.key}"
+           data-platform="${item.platform}"
+           data-timestamp="${item.timestamp}"
+           ${item.endpoint ? `data-endpoint="${item.endpoint}"` : ""}
+           ${item.model ? `data-model="${item.model}"` : ""}>
+        
+        <div class="history-info">
+          <div class="history-platform-time">
+            <span class="history-platform">${item.platformName || item.platform}</span>
+            <span class="history-time">${date}</span>
+          </div>
+          <div class="history-key-endpoint">
+            <span class="history-key" title="${item.key}">${keyPreview}</span>
+            ${endpointInfo}
+          </div>
+        </div>
+
         <div class="history-actions">
-          <button class="copy-key-btn">复制</button>
           <button class="use-key-btn">使用</button>
-          <button class="delete-key-btn" data-index="${absoluteIndex}">删除</button>
+          <button class="copy-key-btn">复制</button>
+          <button class="delete-key-btn">删除</button>
         </div>
       </div>
     `;

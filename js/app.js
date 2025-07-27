@@ -4,7 +4,7 @@
 
 import * as ApiService from "./api-services.js";
 import { autoDetectKeysAndUrls } from "./auto-fill.js";
-import { initConfigModal } from "./config-manager.js";
+import { getDefaultModel, initConfigModal } from "./config-manager.js";
 import { toggleHistoryPanel } from "./history-manager.js";
 import * as logger from "./logger.js";
 import {
@@ -217,7 +217,7 @@ async function checkApiKeys() {
     const result = await ApiService.checkOpenAIKey(openaiKey);
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("openai", openaiKey);
+      await saveValidKey("openai", openaiKey, "", getDefaultModel("openai"));
     }
   }
 
@@ -226,7 +226,7 @@ async function checkApiKeys() {
     const result = await ApiService.checkClaudeKey(claudeKey);
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("claude", claudeKey);
+      await saveValidKey("claude", claudeKey, "", getDefaultModel("claude"));
     }
   }
 
@@ -235,7 +235,7 @@ async function checkApiKeys() {
     const result = await ApiService.checkGeminiKey(geminiKey);
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("gemini", geminiKey);
+      await saveValidKey("gemini", geminiKey, "", getDefaultModel("gemini"));
     }
   }
 
@@ -244,7 +244,7 @@ async function checkApiKeys() {
     const result = await ApiService.checkDeepseekKey(deepseekKey);
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("deepseek", deepseekKey);
+      await saveValidKey("deepseek", deepseekKey, "", getDefaultModel("deepseek"));
     }
   }
 
@@ -253,7 +253,7 @@ async function checkApiKeys() {
     const result = await ApiService.checkGroqKey(groqKey);
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("groq", groqKey);
+      await saveValidKey("groq", groqKey, "", getDefaultModel("groq"));
     }
   }
 
@@ -262,7 +262,7 @@ async function checkApiKeys() {
     const result = await ApiService.checkSiliconflowKey(siliconflowKey);
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("siliconflow", siliconflowKey);
+      await saveValidKey("siliconflow", siliconflowKey, "", getDefaultModel("siliconflow"));
     }
   }
 
@@ -271,7 +271,7 @@ async function checkApiKeys() {
     const result = await ApiService.checkXAIKey(xaiKey);
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("xai", xaiKey);
+      await saveValidKey("xai", xaiKey, "", getDefaultModel("xai"));
     }
   }
 
@@ -280,7 +280,7 @@ async function checkApiKeys() {
     const result = await ApiService.checkOpenRouterKey(openrouterKey);
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("openrouter", openrouterKey);
+      await saveValidKey("openrouter", openrouterKey, "", getDefaultModel("openrouter"));
     }
   }
 
@@ -296,7 +296,7 @@ async function checkApiKeys() {
     );
     results.push(result.message);
     if (result.success) {
-      await saveValidKey("custom", customApiKey, customEndpoint);
+      await saveValidKey("custom", customApiKey, customEndpoint, selectedModel);
     }
 
     // 检查是否已经显示历史记录，如果是则刷新

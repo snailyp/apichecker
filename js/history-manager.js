@@ -1,242 +1,301 @@
 /**
- * 历史记录管理模块 - 处理历史记录的显示和交互
+ * 历史记录管理模块 - 处理历史记录的显示和交互 (重构版)
  */
 
 import { getHistoryKeys, deleteHistoryKey, clearAllHistory, filterKeys, PLATFORM_NAMES } from './storage-service.js';
-import { copyToClipboard, generatePaginationButtons, createHistoryFilters, createHistoryItems } from './ui-utils.js';
+import { copyToClipboard, generatePaginationButtons, createHistoryFilters, createHistoryItems, showNotification } from './ui-utils.js';
+import * as logger from './logger.js';
 
-// 每页显示的历史记录数量
 const ITEMS_PER_PAGE = 5;
+
+// 模块级状态
+let allHistoryKeys = [];
+let filteredHistoryKeys = [];
+let currentPage = 1;
+let historyDiv = null;
 
 /**
  * 渲染历史记录页面
- * @param {HTMLElement} historyDiv - 历史记录容器元素
- * @param {number} currentPage - 当前页码
- * @param {Array} filteredKeys - 筛选后的历史记录
  */
-function renderHistoryPage(historyDiv, currentPage, filteredKeys) {
+function renderHistoryPage() {
+  if (!historyDiv || !historyDiv.querySelector('.history-container')) {
+    return; // 如果历史面板未打开，则不渲染
+  }
+
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const pageItems = filteredKeys.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(filteredKeys.length / ITEMS_PER_PAGE);
+  const pageItems = filteredHistoryKeys.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(filteredHistoryKeys.length / ITEMS_PER_PAGE);
 
-  // 为每个历史记录项添加平台名称
   const itemsWithPlatformNames = pageItems.map(item => ({
     ...item,
     platformName: PLATFORM_NAMES[item.platform] || item.platform
   }));
 
-  // 生成历史记录项HTML
-  const historyItemsHtml = createHistoryItems(itemsWithPlatformNames, startIndex);
-
-  // 生成分页HTML
+  const historyItemsHtml = createHistoryItems(itemsWithPlatformNames);
   const paginationHtml = `
     <div class="pagination">
-      <button ${currentPage === 1 ? "disabled" : ""} id="prevPage">上一页</button>
+      <button ${currentPage === 1 ? "disabled" : ""} data-action="prev-page">上一页</button>
       ${generatePaginationButtons(currentPage, totalPages)}
-      <button ${currentPage === totalPages ? "disabled" : ""} id="nextPage">下一页</button>
+      <button ${currentPage === totalPages ? "disabled" : ""} data-action="next-page">下一页</button>
     </div>
   `;
+
+  const uniqueEndpoints = [...new Set(allHistoryKeys.filter(k => k.endpoint).map(k => k.endpoint))];
+  const uniquePlatforms = [...new Set(allHistoryKeys.map(k => k.platform))];
 
   historyDiv.innerHTML = `
     <div class="history-container">
       <div class="history-header">
         <h3>历史有效密钥</h3>
         <div class="history-header-buttons">
-          <button id="copyAllKeysBtn" title="复制所有密钥">复制全部</button>
-          <button id="clearHistoryBtn">清空历史</button>
+          <button data-action="copy-all" title="复制所有筛选后的密钥">复制筛选结果</button>
+          <button data-action="clear-all" class="danger">清空全部历史</button>
         </div>
       </div>
-      ${createHistoryFilters(
-        [...new Set(filteredKeys.filter(k => k.endpoint).map(k => k.endpoint))],
-        [...new Set(filteredKeys.map(k => k.platform))],
-        PLATFORM_NAMES
-      )}
-      ${historyItemsHtml}
+      ${createHistoryFilters(uniqueEndpoints, uniquePlatforms, PLATFORM_NAMES)}
+      <div class="history-list">${historyItemsHtml}</div>
       ${paginationHtml}
     </div>
   `;
 
-  // 添加事件监听器
-  addHistoryEventListeners(historyDiv, filteredKeys, currentPage);
+  // 恢复筛选器的选中状态
+  const endpointFilter = historyDiv.querySelector("#endpointFilter");
+  const platformFilter = historyDiv.querySelector("#platformFilter");
+  if (endpointFilter) endpointFilter.value = localStorage.getItem('history_endpoint_filter') || '';
+  if (platformFilter) platformFilter.value = localStorage.getItem('history_platform_filter') || '';
 }
 
 /**
- * 为历史记录页面添加事件监听器
- * @param {HTMLElement} historyDiv - 历史记录容器元素
- * @param {Array} filteredKeys - 筛选后的历史记录
- * @param {number} currentPage - 当前页码
+ * 处理筛选逻辑
  */
-function addHistoryEventListeners(historyDiv, filteredKeys, currentPage) {
-  // 添加筛选器事件监听
-  const endpointFilter = document.getElementById("endpointFilter");
-  const platformFilter = document.getElementById("platformFilter");
+function handleFilterChange() {
+  const endpointFilter = historyDiv.querySelector("#endpointFilter")?.value || '';
+  const platformFilter = historyDiv.querySelector("#platformFilter")?.value || '';
 
-  if (endpointFilter && platformFilter) {
-    endpointFilter.addEventListener("change", () => {
-      const newFilteredKeys = filterKeys(filteredKeys, endpointFilter.value, platformFilter.value);
-      renderHistoryPage(historyDiv, 1, newFilteredKeys);
-    });
+  // 保存筛选状态
+  localStorage.setItem('history_endpoint_filter', endpointFilter);
+  localStorage.setItem('history_platform_filter', platformFilter);
 
-    platformFilter.addEventListener("change", () => {
-      const newFilteredKeys = filterKeys(filteredKeys, endpointFilter.value, platformFilter.value);
-      renderHistoryPage(historyDiv, 1, newFilteredKeys);
-    });
+  filteredHistoryKeys = filterKeys(allHistoryKeys, endpointFilter, platformFilter);
+  currentPage = 1;
+  renderHistoryPage();
+}
+
+/**
+ * 处理事件委托
+ * @param {Event} e - 事件对象
+ */
+async function handleHistoryEvents(e) {
+  const target = e.target;
+  const action = target.dataset.action || target.closest('[data-action]')?.dataset.action;
+  const historyItem = target.closest('.history-item');
+
+  if (e.type === 'change' && target.matches('#endpointFilter, #platformFilter')) {
+    handleFilterChange();
+    return;
   }
 
-  // 添加分页事件监听
-  document.querySelectorAll(".pagination button[data-page]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const newPage = parseInt(btn.dataset.page);
-      renderHistoryPage(historyDiv, newPage, filteredKeys);
-    });
-  });
-
-  const prevPageBtn = document.getElementById("prevPage");
-  const nextPageBtn = document.getElementById("nextPage");
-
-  if (prevPageBtn) {
-    prevPageBtn.addEventListener("click", () => {
-      if (currentPage > 1) {
-        renderHistoryPage(historyDiv, currentPage - 1, filteredKeys);
-      }
-    });
+  if (target.matches('.pagination button[data-page]')) {
+    currentPage = parseInt(target.dataset.page);
+    renderHistoryPage();
+    return;
   }
-
-  if (nextPageBtn) {
-    nextPageBtn.addEventListener("click", () => {
-      const totalPages = Math.ceil(filteredKeys.length / ITEMS_PER_PAGE);
-      if (currentPage < totalPages) {
-        renderHistoryPage(historyDiv, currentPage + 1, filteredKeys);
-      }
-    });
-  }
-
-  // 添加复制单个密钥的按钮事件
-  document.querySelectorAll(".history-item").forEach((item) => {
-    const key = item.dataset.key;
-    const platform = item.dataset.platform;
-    const endpoint = item.dataset.endpoint;
-    const platformName = PLATFORM_NAMES[platform] || platform;
-
-    const copyBtn = item.querySelector(".copy-key-btn");
-    if (copyBtn) {
-      copyBtn.addEventListener("click", async () => {
-        // 构建包含平台信息和endpoint的复制文本
-        let copyText = `Platform: ${platformName}\nKey: ${key}`;
-        if (endpoint) {
-          copyText += `\nEndpoint: ${endpoint}`;
+  
+  if (action) {
+    e.preventDefault();
+    switch (action) {
+      case 'prev-page':
+        if (currentPage > 1) {
+          currentPage--;
+          renderHistoryPage();
         }
-
-        await copyToClipboard(copyText, copyBtn);
-      });
-    }
-
-    // 添加使用按钮的点击事件
-    const useBtn = item.querySelector(".use-key-btn");
-    if (useBtn) {
-      useBtn.addEventListener("click", function() {
-        // 获取对应的区段和导航链接
-        let sectionId = `${platform}-section`;
-        let navLinkSelector = `.nav-menu a[href='#${platform}-section']`;
-
-        // 如果区段未激活,则激活它
-        const section = document.getElementById(sectionId);
-        const navLink = document.querySelector(navLinkSelector);
-        if (section && navLink && !section.classList.contains("active")) {
-          section.classList.add("active");
-          navLink.classList.add("active");
+        break;
+      case 'next-page':
+        const totalPages = Math.ceil(filteredHistoryKeys.length / ITEMS_PER_PAGE);
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderHistoryPage();
         }
-
-        // 填充对应的输入框
-        if (platform === "custom") {
-          const customApiKeyInput = document.getElementById("customApiKey");
-          const customEndpointInput = document.getElementById("customEndpoint");
-          
-          if (customApiKeyInput) customApiKeyInput.value = key;
-          if (customEndpointInput && endpoint) customEndpointInput.value = endpoint;
-          
-          // 手动触发模型列表更新
-          const event = new Event('input');
-          if (customEndpointInput) customEndpointInput.dispatchEvent(event);
+        break;
+      case 'copy-all':
+        copyAllFilteredKeys(target);
+        break;
+      case 'clear-all':
+        if (target.dataset.confirming) {
+          delete target.dataset.confirming;
+          await clearAllHistory();
+          await initializeHistoryPanel();
+          showNotification("所有历史记录已清空", "info");
         } else {
-          const inputId = `${platform}Key`;
-          const input = document.getElementById(inputId);
-          if (input) input.value = key;
+          target.dataset.confirming = true;
+          const originalText = target.textContent;
+          target.textContent = "确认清空?";
+          target.style.backgroundColor = "#f8d7da";
+
+          setTimeout(() => {
+            if (target.dataset.confirming) {
+              delete target.dataset.confirming;
+              target.textContent = originalText;
+              target.style.backgroundColor = "";
+            }
+          }, 3000);
         }
-      });
+        break;
     }
+  } else if (historyItem) {
+    const timestamp = historyItem.dataset.timestamp;
+    const keyData = allHistoryKeys.find(k => k.timestamp === timestamp);
+    if (!keyData) return;
 
-    // 添加删除按钮的点击事件
-    const deleteBtn = item.querySelector(".delete-key-btn");
-    if (deleteBtn) {
-      deleteBtn.addEventListener("click", async function() {
-        const index = parseInt(this.dataset.index);
-        await deleteHistoryKey(index);
-        
-        // 重新加载历史记录
-        toggleHistoryPanel(historyDiv);
-        toggleHistoryPanel(historyDiv);
-      });
-    }
-  });
+    if (target.classList.contains('delete-key-btn')) {
+      if (target.dataset.confirming) {
+        // Second click: delete
+        delete target.dataset.confirming;
+        const success = await deleteHistoryKey(timestamp);
+        if (success) {
+          allHistoryKeys = allHistoryKeys.filter(k => k.timestamp !== timestamp);
+          handleFilterChange();
+          showNotification("记录已删除", "info");
+        }
+      } else {
+        // First click: ask for confirmation
+        target.dataset.confirming = true;
+        const originalText = target.textContent;
+        target.textContent = "确认删除?";
+        target.style.backgroundColor = "#f8d7da"; // Highlight color
 
-  // 添加复制所有密钥的功能
-  const copyAllKeysBtn = document.getElementById("copyAllKeysBtn");
-  if (copyAllKeysBtn) {
-    copyAllKeysBtn.addEventListener("click", async function() {
-      try {
-        const keysText = filteredKeys.map((item) => {
-          const platformName = PLATFORM_NAMES[item.platform] || item.platform;
-          let text = `${platformName}: ${item.key}`;
-          if (item.endpoint) {
-            text += `\nEndpoint: ${item.endpoint}`;
+        // Reset after 3 seconds
+        setTimeout(() => {
+          if (target.dataset.confirming) {
+            delete target.dataset.confirming;
+            target.textContent = originalText;
+            target.style.backgroundColor = ""; // Reset color
           }
-          return text;
-        }).join("\n\n");
-
-        await copyToClipboard(keysText, this);
-      } catch (err) {
-        console.error("复制失败:", err);
+        }, 3000);
       }
-    });
+    } else if (target.classList.contains('copy-key-btn')) {
+      const platformName = PLATFORM_NAMES[keyData.platform] || keyData.platform;
+      let copyText = `Platform: ${platformName}\nKey: ${keyData.key}`;
+      if (keyData.endpoint) copyText += `\nEndpoint: ${keyData.endpoint}`;
+      if (keyData.model) copyText += `\nModel: ${keyData.model}`;
+      await copyToClipboard(copyText, target);
+    } else if (target.classList.contains('use-key-btn')) {
+      fillInputsWithKey(keyData);
+    } else if (target.classList.contains('history-key')) {
+      const success = await copyToClipboard(keyData.key);
+      if (success) {
+        showNotification("密钥已复制!", "success");
+      } else {
+        showNotification("复制失败!", "error");
+      }
+    }
+  }
+}
+
+/**
+ * 复制所有筛选后的密钥
+ * @param {HTMLElement} button - 触发复制的按钮
+ */
+async function copyAllFilteredKeys(button) {
+  try {
+    if (filteredHistoryKeys.length === 0) {
+      await copyToClipboard("没有可复制的密钥。", button);
+      return;
+    }
+    const keysText = filteredHistoryKeys.map((item) => {
+      const platformName = PLATFORM_NAMES[item.platform] || item.platform;
+      let text = `${platformName}: ${item.key}`;
+      if (item.endpoint) text += `\nEndpoint: ${item.endpoint}`;
+      if (item.model) text += `\nModel: ${item.model}`;
+      return text;
+    }).join("\n\n");
+
+    await copyToClipboard(keysText, button);
+  } catch (err) {
+    logger.error("复制失败:", err);
+  }
+}
+
+/**
+ * 使用指定的密钥数据填充主界面的输入框
+ * @param {object} keyData - 历史记录项的数据
+ */
+function fillInputsWithKey(keyData) {
+  const { platform, key, endpoint, model } = keyData;
+  
+  // 激活对应的区段
+  const sectionId = `${platform}-section`;
+  const navLinkSelector = `.nav-menu a[href='#${sectionId}']`;
+  const section = document.getElementById(sectionId);
+  const navLink = document.querySelector(navLinkSelector);
+  
+  if (section && navLink) {
+    document.querySelectorAll('.section, .nav-menu a').forEach(el => el.classList.remove('active'));
+    section.classList.add('active');
+    navLink.classList.add('active');
   }
 
-  // 添加清空历史的点击事件
-  const clearHistoryBtn = document.getElementById("clearHistoryBtn");
-  if (clearHistoryBtn) {
-    clearHistoryBtn.addEventListener("click", async function() {
-      if (confirm("确定要清空所有历史记录吗？")) {
-        await clearAllHistory();
-        historyDiv.innerHTML = "暂无历史记录";
-      }
-    });
+  // 填充输入框
+  if (platform === "custom") {
+    const customApiKeyInput = document.getElementById("customApiKey");
+    const customEndpointInput = document.getElementById("customEndpoint");
+    if (customApiKeyInput) customApiKeyInput.value = key;
+    if (customEndpointInput) customEndpointInput.value = endpoint || "";
+    
+    // 手动触发模型列表更新
+    const event = new Event('input', { bubbles: true });
+    if (customEndpointInput) customEndpointInput.dispatchEvent(event);
+    
+    // 尝试设置模型
+    if (model) {
+        setTimeout(() => {
+            const modelSelect = document.getElementById("modelSelect");
+            if(modelSelect) {
+                const option = Array.from(modelSelect.options).find(opt => opt.value === model);
+                if (option) {
+                    modelSelect.value = model;
+                }
+            }
+        }, 500); // 延迟以等待模型列表加载
+    }
+
+  } else {
+    const inputId = `${platform}Key`;
+    const input = document.getElementById(inputId);
+    if (input) input.value = key;
+  }
+}
+
+/**
+ * 初始化历史记录面板
+ */
+async function initializeHistoryPanel() {
+  try {
+    allHistoryKeys = await getHistoryKeys();
+    handleFilterChange(); // 初始筛选和渲染
+  } catch (error) {
+    logger.error('获取历史记录失败', error);
+    historyDiv.innerHTML = `<div class="history-container"><div class="history-empty">获取历史记录失败：${error.message}</div></div>`;
   }
 }
 
 /**
  * 切换历史记录面板的显示状态
- * @param {HTMLElement} historyDiv - 历史记录容器元素
+ * @param {HTMLElement} historyContainer - 历史记录容器元素
  */
-export async function toggleHistoryPanel(historyDiv) {
-  // 检查是否已经显示历史记录
+export async function toggleHistoryPanel(historyContainer) {
+  historyDiv = historyContainer;
   const existingHistory = historyDiv.querySelector(".history-container");
+
   if (existingHistory) {
     historyDiv.innerHTML = "";
-    return;
-  }
-
-  try {
-    const validKeys = await getHistoryKeys();
-
-    if (validKeys.length === 0) {
-      historyDiv.innerHTML = "暂无历史记录";
-      return;
-    }
-
-    // 初始渲染第一页
-    renderHistoryPage(historyDiv, 1, validKeys);
-  } catch (error) {
-    historyDiv.innerHTML = `获取历史记录失败：${error.message}`;
+    historyDiv.removeEventListener('change', handleHistoryEvents);
+    historyDiv.removeEventListener('click', handleHistoryEvents);
+  } else {
+    historyDiv.innerHTML = '<div class="history-container"><div class="history-empty">正在加载历史记录...</div></div>';
+    historyDiv.addEventListener('change', handleHistoryEvents);
+    historyDiv.addEventListener('click', handleHistoryEvents);
+    await initializeHistoryPanel();
   }
 }
