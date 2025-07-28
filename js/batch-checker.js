@@ -1,6 +1,7 @@
 import * as api from './api-services.js';
 import * as logger from './logger.js';
 import { showNotification } from './ui-utils.js';
+import { getDefaultModel } from './config-manager.js';
 
 /**
  * 节流函数 - 限制函数调用频率
@@ -252,17 +253,7 @@ function updateBatchProgress(result, row, stats, type, index) {
     modelCell.textContent = model || 'N/A';
   } else {
     // 为其他API类型显示默认测试模型
-    const defaultModels = {
-      'openai': 'gpt-4o',
-      'claude': 'claude-3-5-sonnet-20241022',
-      'gemini': 'gemini-1.5-flash',
-      'deepseek': 'deepseek-chat',
-      'groq': 'llama-3.3-70b-versatile',
-      'siliconflow': 'Qwen/Qwen2.5-72B-Instruct',
-      'xai': 'grok-3-mini',
-      'openrouter': 'openrouter/auto'
-    };
-    modelCell.textContent = defaultModels[type] || 'N/A';
+    modelCell.textContent = getDefaultModel(type) || 'N/A';
   }
 
   // 更新进度
@@ -494,17 +485,7 @@ function renderTable(sortedData) {
         : batchModelInputEl.value;
       modelText = model || 'N/A';
     } else {
-      const defaultModels = {
-        'openai': 'gpt-4o',
-        'claude': 'claude-3-5-sonnet-20241022',
-        'gemini': 'gemini-1.5-flash',
-        'deepseek': 'deepseek-chat',
-        'groq': 'llama-3.3-70b-versatile',
-        'siliconflow': 'Qwen/Qwen2.5-72B-Instruct',
-        'xai': 'grok-3-mini',
-        'openrouter': 'openrouter/auto'
-      };
-      modelText = defaultModels[data.type] || 'N/A';
+      modelText = getDefaultModel(data.type) || 'N/A';
     }
 
     html += `
