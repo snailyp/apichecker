@@ -5,7 +5,7 @@
 import * as ApiService from "./api-services.js";
 import { autoDetectKeysAndUrls } from "./auto-fill.js";
 import { getDefaultModel, initConfigModal } from "./config-manager.js";
-import { toggleHistoryPanel } from "./history-manager.js";
+import { toggleHistoryPanel, refreshHistoryPanel } from "./history-manager.js";
 import { HelpSystem } from './help-system.js';
 import * as logger from "./logger.js";
 import {
@@ -15,6 +15,116 @@ import {
 } from "./model-manager.js";
 import { saveValidKey } from "./storage-service.js";
 import { getRequestUrl } from "./ui-utils.js";
+
+// API 提供商配置
+const apiProviders = [
+  {
+    id: 'openai',
+    keyInputId: 'openaiKey',
+    checkFunction: ApiService.checkOpenAIKey,
+    balanceFunction: null, // 余额查询在 checkOpenAIKey 内部处理
+    balanceNotSupported: false
+  },
+  {
+    id: 'claude',
+    keyInputId: 'claudeKey',
+    checkFunction: ApiService.checkClaudeKey,
+    balanceFunction: null,
+    balanceNotSupported: true
+  },
+  {
+    id: 'gemini',
+    keyInputId: 'geminiKey',
+    checkFunction: ApiService.checkGeminiKey,
+    balanceFunction: null,
+    balanceNotSupported: true
+  },
+  {
+    id: 'deepseek',
+    keyInputId: 'deepseekKey',
+    checkFunction: ApiService.checkDeepseekKey,
+    balanceFunction: ApiService.checkDeepseekBalance,
+    balanceNotSupported: false
+  },
+  {
+    id: 'groq',
+    keyInputId: 'groqKey',
+    checkFunction: ApiService.checkGroqKey,
+    balanceFunction: null,
+    balanceNotSupported: true
+  },
+  {
+    id: 'siliconflow',
+    keyInputId: 'siliconflowKey',
+    checkFunction: ApiService.checkSiliconflowKey,
+    balanceFunction: ApiService.checkSiliconflowBalance,
+    balanceNotSupported: false
+  },
+  {
+    id: 'xai',
+    keyInputId: 'xaiKey',
+    checkFunction: ApiService.checkXAIKey,
+    balanceFunction: null,
+    balanceNotSupported: true
+  },
+  {
+    id: 'openrouter',
+    keyInputId: 'openrouterKey',
+    checkFunction: ApiService.checkOpenRouterKey,
+    balanceFunction: ApiService.checkOpenRouterCredits,
+    balanceNotSupported: false
+  }
+];
+
+/**
+ * 处理单个API提供商的密钥检查
+ * @param {Object} provider - API提供商配置对象
+ * @param {Array} results - 结果数组
+ */
+async function processApiCheck(provider, results) {
+  const keyInput = document.getElementById(provider.keyInputId);
+  const apiKey = keyInput?.value.trim();
+  
+  if (apiKey) {
+    const result = await provider.checkFunction(apiKey);
+    results.push(result.message);
+    if (result.success) {
+      await saveValidKey(provider.id, apiKey, "", getDefaultModel(provider.id));
+    }
+  }
+}
+
+/**
+ * 处理单个API提供商的余额查询
+ * @param {Object} provider - API提供商配置对象
+ * @param {Array} results - 结果数组
+ */
+async function processBalanceCheck(provider, results) {
+  const keyInput = document.getElementById(provider.keyInputId);
+  const apiKey = keyInput?.value.trim();
+  
+  if (apiKey) {
+    if (provider.balanceNotSupported) {
+      results.push(`❌ ${provider.id.charAt(0).toUpperCase() + provider.id.slice(1)} 暂不支持余额查询`);
+    } else if (provider.balanceFunction) {
+      const result = await provider.balanceFunction(apiKey);
+      results.push(result.message);
+    }
+  }
+}
+
+/**
+ * 添加事件监听器的辅助函数
+ * @param {Array} eventListeners - 事件监听器配置数组
+ */
+function addEventListeners(eventListeners) {
+  eventListeners.forEach(({ selector, event, handler }) => {
+    const element = document.getElementById(selector);
+    if (element) {
+      element.addEventListener(event, handler);
+    }
+  });
+}
 
 /**
  * 初始化应用
@@ -29,73 +139,75 @@ function initApp() {
   // 添加导航菜单事件监听
   initNavigation();
 
-  // 添加检测按钮事件监听
-  document
-    .getElementById("checkButton")
-    ?.addEventListener("click", checkApiKeys);
+  // 事件监听器配置数组
+  const eventListeners = [
+    { selector: 'checkButton', event: 'click', handler: checkApiKeys },
+    { selector: 'clearButton', event: 'click', handler: clearAllInputs },
+    { selector: 'autoFillButton', event: 'click', handler: autoDetectKeysAndUrls },
+    { selector: 'checkBalanceBtn', event: 'click', handler: checkBalance },
+    {
+      selector: 'historyButton',
+      event: 'click',
+      handler: () => {
+        const historyDiv = document.getElementById("history");
+        if (historyDiv) {
+          toggleHistoryPanel(historyDiv);
+        }
+      }
+    },
+    {
+      selector: 'copyModelsBtn',
+      event: 'click',
+      handler: () => {
+        const button = document.getElementById("copyModelsBtn");
+        if (button) {
+          copySelectedModels(button);
+        }
+      }
+    },
+    {
+      selector: 'testModelsBtn',
+      event: 'click',
+      handler: () => {
+        const endpoint = document.getElementById("customEndpoint")?.value.trim();
+        const apiKey = document.getElementById("customApiKey")?.value.trim();
 
-  // 添加清空按钮事件监听
-  document
-    .getElementById("clearButton")
-    ?.addEventListener("click", clearAllInputs);
-
-  // 添加自动填充按钮事件监听
-  document
-    .getElementById("autoFillButton")
-    ?.addEventListener("click", autoDetectKeysAndUrls);
-
-  // 添加历史记录按钮事件监听
-  document.getElementById("historyButton")?.addEventListener("click", () => {
-    const historyDiv = document.getElementById("history");
-    if (historyDiv) {
-      toggleHistoryPanel(historyDiv);
-    }
-  });
-
-  // 添加余额查询按钮事件监听
-  document
-    .getElementById("checkBalanceBtn")
-    ?.addEventListener("click", checkBalance);
-
-  // 添加复制模型按钮事件监听
-  document.getElementById("copyModelsBtn")?.addEventListener("click", () => {
-    const button = document.getElementById("copyModelsBtn");
-    if (button) {
-      copySelectedModels(button);
-    }
-  });
-
-  // 添加测试模型按钮事件监听
-  document.getElementById("testModelsBtn")?.addEventListener("click", () => {
-    const endpoint = document.getElementById("customEndpoint")?.value.trim();
-    const apiKey = document.getElementById("customApiKey")?.value.trim();
-
-    if (endpoint && apiKey) {
-      testSelectedModels(endpoint, apiKey);
-    } else {
-      const resultDiv = document.getElementById("result");
-      if (resultDiv) {
-        resultDiv.innerHTML = "⚠️ 请先填写接口地址和API密钥";
+        if (endpoint && apiKey) {
+          testSelectedModels(endpoint, apiKey);
+        } else {
+          const resultDiv = document.getElementById("result");
+          if (resultDiv) {
+            resultDiv.innerHTML = "⚠️ 请先填写接口地址和API密钥";
+          }
+        }
+      }
+    },
+    {
+      selector: 'scrollTopBtn',
+      event: 'click',
+      handler: () => {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      }
+    },
+    {
+      selector: 'scrollBottomBtn',
+      event: 'click',
+      handler: () => {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: "smooth",
+        });
       }
     }
-  });
+  ];
 
-  // 添加滚动按钮事件监听
-  document.getElementById("scrollTopBtn")?.addEventListener("click", () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  });
+  // 批量添加事件监听器
+  addEventListeners(eventListeners);
 
-  document.getElementById("scrollBottomBtn")?.addEventListener("click", () => {
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: "smooth",
-    });
-  });
-
-  // 监听自定义接口输入框变化
+  // 监听自定义接口输入框变化（保留原有逻辑，因为涉及特殊的条件判断和多个事件）
   const customEndpoint = document.getElementById("customEndpoint");
   const customApiKey = document.getElementById("customApiKey");
 
@@ -198,17 +310,6 @@ function initNavigation() {
  * 检测所有API密钥
  */
 async function checkApiKeys() {
-  const openaiKey = document.getElementById("openaiKey")?.value.trim();
-  const claudeKey = document.getElementById("claudeKey")?.value.trim();
-  const geminiKey = document.getElementById("geminiKey")?.value.trim();
-  const deepseekKey = document.getElementById("deepseekKey")?.value.trim();
-  const groqKey = document.getElementById("groqKey")?.value.trim();
-  const siliconflowKey = document.getElementById("siliconflowKey")?.value.trim();
-  const xaiKey = document.getElementById("xaiKey")?.value.trim();
-  const openrouterKey = document.getElementById("openrouterKey")?.value.trim();
-  const customEndpoint = document.getElementById("customEndpoint")?.value.trim();
-  const customApiKey = document.getElementById("customApiKey")?.value.trim();
-
   const resultDiv = document.getElementById("result");
   if (!resultDiv) return;
 
@@ -216,79 +317,15 @@ async function checkApiKeys() {
 
   const results = [];
 
-  // 检测 OpenAI API 密钥
-  if (openaiKey) {
-    const result = await ApiService.checkOpenAIKey(openaiKey);
-    results.push(result.message);
-    if (result.success) {
-      await saveValidKey("openai", openaiKey, "", getDefaultModel("openai"));
-    }
+  // 使用配置数组处理所有标准API提供商
+  for (const provider of apiProviders) {
+    await processApiCheck(provider, results);
   }
 
-  // 检测 Claude API 密钥
-  if (claudeKey) {
-    const result = await ApiService.checkClaudeKey(claudeKey);
-    results.push(result.message);
-    if (result.success) {
-      await saveValidKey("claude", claudeKey, "", getDefaultModel("claude"));
-    }
-  }
-
-  // 检测 Gemini API 密钥
-  if (geminiKey) {
-    const result = await ApiService.checkGeminiKey(geminiKey);
-    results.push(result.message);
-    if (result.success) {
-      await saveValidKey("gemini", geminiKey, "", getDefaultModel("gemini"));
-    }
-  }
-
-  // 检测 Deepseek API 密钥
-  if (deepseekKey) {
-    const result = await ApiService.checkDeepseekKey(deepseekKey);
-    results.push(result.message);
-    if (result.success) {
-      await saveValidKey("deepseek", deepseekKey, "", getDefaultModel("deepseek"));
-    }
-  }
-
-  // 检测 Groq API 密钥
-  if (groqKey) {
-    const result = await ApiService.checkGroqKey(groqKey);
-    results.push(result.message);
-    if (result.success) {
-      await saveValidKey("groq", groqKey, "", getDefaultModel("groq"));
-    }
-  }
-
-  // 检测 Siliconflow API 密钥
-  if (siliconflowKey) {
-    const result = await ApiService.checkSiliconflowKey(siliconflowKey);
-    results.push(result.message);
-    if (result.success) {
-      await saveValidKey("siliconflow", siliconflowKey, "", getDefaultModel("siliconflow"));
-    }
-  }
-
-  // 检测 xAI API 密钥
-  if (xaiKey) {
-    const result = await ApiService.checkXAIKey(xaiKey);
-    results.push(result.message);
-    if (result.success) {
-      await saveValidKey("xai", xaiKey, "", getDefaultModel("xai"));
-    }
-  }
-
-  // 检测 OpenRouter API 密钥
-  if (openrouterKey) {
-    const result = await ApiService.checkOpenRouterKey(openrouterKey);
-    results.push(result.message);
-    if (result.success) {
-      await saveValidKey("openrouter", openrouterKey, "", getDefaultModel("openrouter"));
-    }
-  }
-
-  // 检测自定义 OpenAI 兼容接口
+  // 处理自定义 OpenAI 兼容接口
+  const customEndpoint = document.getElementById("customEndpoint")?.value.trim();
+  const customApiKey = document.getElementById("customApiKey")?.value.trim();
+  
   if (customEndpoint && customApiKey) {
     const modelSelect = document.getElementById("modelSelect");
     const selectedModel = modelSelect?.value || "gpt-3.5-turbo";
@@ -304,26 +341,15 @@ async function checkApiKeys() {
     }
 
     // 检查是否已经显示历史记录，如果是则刷新
-    const historyDiv = document.getElementById("history");
-    const existingHistory = historyDiv?.querySelector(".history-container");
-    if (existingHistory) {
-      toggleHistoryPanel(historyDiv);
-      toggleHistoryPanel(historyDiv);
-    }
+    await refreshHistoryPanel();
   }
 
-  // 如果没有输入任何 API 密钥
-  if (
-    !openaiKey &&
-    !claudeKey &&
-    !geminiKey &&
-    !deepseekKey &&
-    !groqKey &&
-    !siliconflowKey &&
-    !xaiKey &&
-    !openrouterKey &&
-    !customEndpoint
-  ) {
+  // 检查是否至少输入了一个密钥
+  const allKeys = apiProviders.map(provider =>
+    document.getElementById(provider.keyInputId)?.value.trim()
+  ).concat([customEndpoint]);
+  
+  if (!allKeys.some(key => key)) {
     results.push("⚠️ 请至少输入一个 API 密钥进行检测。");
   }
 
@@ -428,59 +454,17 @@ function updateRequestUrlPreview(endpoint) {
  * 查询API余额
  */
 async function checkBalance() {
-  const openaiKey = document.getElementById("openaiKey")?.value.trim();
-  const claudeKey = document.getElementById("claudeKey")?.value.trim();
-  const geminiKey = document.getElementById("geminiKey")?.value.trim();
-  const deepseekKey = document.getElementById("deepseekKey")?.value.trim();
-  const groqKey = document.getElementById("groqKey")?.value.trim();
-  const siliconflowKey = document.getElementById("siliconflowKey")?.value.trim();
-  const xaiKey = document.getElementById("xaiKey")?.value.trim();
-  const openrouterKey = document.getElementById("openrouterKey")?.value.trim();
-  const customEndpoint = document.getElementById("customEndpoint")?.value.trim();
-  const customApiKey = document.getElementById("customApiKey")?.value.trim();
-
   const results = [];
 
-  // 添加不支持平台的提示
-  if (openaiKey) {
-    results.push("❌ OpenAI 暂不支持余额查询");
+  // 使用配置数组处理所有标准API提供商
+  for (const provider of apiProviders) {
+    await processBalanceCheck(provider, results);
   }
 
-  if (claudeKey) {
-    results.push("❌ Claude 暂不支持余额查询");
-  }
-
-  if (geminiKey) {
-    results.push("❌ Gemini 暂不支持余额查询");
-  }
-
-  if (groqKey) {
-    results.push("❌ Groq 暂不支持余额查询");
-  }
-
-  if (xaiKey) {
-    results.push("❌ xAI 暂不支持余额查询");
-  }
-
-  // OpenRouter 余额查询
-  if (openrouterKey) {
-    const result = await ApiService.checkOpenRouterCredits(openrouterKey);
-    results.push(result.message);
-  }
-
-  // Deepseek 余额查询
-  if (deepseekKey) {
-    const result = await ApiService.checkDeepseekBalance(deepseekKey);
-    results.push(result.message);
-  }
-
-  // Siliconflow 余额查询
-  if (siliconflowKey) {
-    const result = await ApiService.checkSiliconflowBalance(siliconflowKey);
-    results.push(result.message);
-  }
-
-  // 自定义 OpenAI 兼容接口的额度查询
+  // 处理自定义 OpenAI 兼容接口的额度查询
+  const customEndpoint = document.getElementById("customEndpoint")?.value.trim();
+  const customApiKey = document.getElementById("customApiKey")?.value.trim();
+  
   if (customEndpoint && customApiKey) {
     const result = await ApiService.checkCustomEndpointQuota(
       customEndpoint,

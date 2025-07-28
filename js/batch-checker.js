@@ -2,6 +2,25 @@ import * as api from './api-services.js';
 import * as logger from './logger.js';
 import { showNotification } from './ui-utils.js';
 
+/**
+ * 节流函数 - 限制函数调用频率
+ * @param {Function} func - 要节流的函数
+ * @param {number} limit - 节流时间间隔（毫秒）
+ * @returns {Function} 节流后的函数
+ */
+function throttle(func, limit) {
+  let inThrottle;
+  return function() {
+    const args = arguments;
+    const context = this;
+    if (!inThrottle) {
+      func.apply(context, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  }
+}
+
 const batchApiKeysEl = document.getElementById('batchApiKeys');
 const batchLineNumbersEl = document.getElementById('batchLineNumbers');
 const concurrencyLimitEl = document.getElementById('concurrencyLimit');
@@ -66,30 +85,22 @@ function detectKeyType(key) {
 }
 
 
-async function startBatchCheck() {
-  const keys = batchApiKeysEl.value.split('\n').map(k => k.trim()).filter(Boolean);
-  if (keys.length === 0) {
-    batchResultsEl.innerHTML = '<p>请输入至少一个API密钥。</p>';
-    return;
-  }
-
-  const concurrency = parseInt(concurrencyLimitEl.value, 10) || 5;
-  let activeChecks = 0;
-  const queue = [...keys];
-  const results = [];
-  let completedChecks = 0;
-  let validCount = 0;
-  let invalidCount = 0;
-
+/**
+ * 设置批量检测的UI界面
+ * @param {string[]} keys - 密钥数组
+ * @returns {Object} 返回包含表格行数据和统计信息的对象
+ */
+function setupBatchUI(keys) {
   // 重置并显示进度条和统计信息
   batchStatsEl.style.display = 'block';
-  batchStatsEl.classList.remove('completed'); // 移除完成状态
+  batchStatsEl.classList.remove('completed');
   validCountEl.textContent = '0';
   invalidCountEl.textContent = '0';
   batchProgressContainer.style.display = 'block';
   batchProgressBar.style.width = '0%';
   batchProgressText.textContent = `0 / ${keys.length}`;
 
+  // 创建结果表格
   batchResultsEl.innerHTML = `
     <h3>检测结果 (共 ${keys.length} 个密钥)</h3>
     <div class="table-container">
@@ -112,13 +123,16 @@ async function startBatchCheck() {
       </table>
     </div>
   `;
-  const tbody = document.getElementById('batch-results-tbody');
 
+  const tbody = document.getElementById('batch-results-tbody');
+  const rowsData = [];
+
+  // 创建表格行的辅助函数
   function renderRow(key, type, status, message, index) {
     const shortKey = `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
     const row = document.createElement('tr');
     row.id = `result-row-${index}`;
-    row.dataset.fullKey = key; // 存储完整密钥
+    row.dataset.fullKey = key;
     row.innerHTML = `
       <td>${index + 1}</td>
       <td>${shortKey}</td>
@@ -133,48 +147,175 @@ async function startBatchCheck() {
     tbody.appendChild(row);
     return row;
   }
-  
+
+  // 为每个密钥创建行
   keys.forEach((key, index) => {
-      const selectedProvider = batchProviderEl.value;
-      const type = selectedProvider === 'auto' ? detectKeyType(key) : selectedProvider;
-      const row = renderRow(key, type, 'pending', '等待检测...', index);
-      results.push({ key, type, row, status: 'pending' });
+    const selectedProvider = batchProviderEl.value;
+    const type = selectedProvider === 'auto' ? detectKeyType(key) : selectedProvider;
+    const row = renderRow(key, type, 'pending', '等待检测...', index);
+    rowsData.push({ key, type, row, status: 'pending' });
   });
 
-
-  function updateProgress() {
-    completedChecks++;
-    const percentage = (completedChecks / keys.length) * 100;
-    batchProgressBar.style.width = `${percentage}%`;
-    batchProgressText.textContent = `${completedChecks} / ${keys.length}`;
-  }
-
-  function updateStats(isValid) {
-    if (isValid) {
-      validCount++;
-      animateCountUpdate(validCountEl, validCount);
-    } else {
-      invalidCount++;
-      animateCountUpdate(invalidCountEl, invalidCount);
+  return {
+    rowsData,
+    tbody,
+    stats: {
+      completedChecks: 0,
+      validCount: 0,
+      invalidCount: 0,
+      totalKeys: keys.length
     }
+  };
+}
+
+/**
+ * 创建任务队列
+ * @param {string[]} keys - 密钥数组
+ * @param {string} apiProvider - API提供商
+ * @returns {Array} 任务数组
+ */
+function createTaskQueue(keys, apiProvider) {
+  return keys.map((key, index) => {
+    const type = apiProvider === 'auto' ? detectKeyType(key) : apiProvider;
+    return {
+      key,
+      type,
+      index
+    };
+  });
+}
+
+/**
+ * 更新批量检测进度和UI
+ * @param {Object} result - 检测结果
+ * @param {HTMLElement} row - 表格行元素
+ * @param {Object} stats - 统计信息对象
+ * @param {string} type - 密钥类型
+ * @param {number} index - 密钥索引
+ */
+function updateBatchProgress(result, row, stats, type, index) {
+  // 首先更新数据状态
+  if (index !== undefined && resultsData[index]) {
+    resultsData[index].status = result.success ? 'valid' : 'invalid';
+    resultsData[index].message = result.message;
+    resultsData[index].isPaid = result.isPaid || false;
+    resultsData[index].balance = result.balance ?? -1;
+    resultsData[index].chargeBalance = result.chargeBalance ?? -1;
+    resultsData[index].giftBalance = result.giftBalance ?? -1;
   }
 
-  function animateCountUpdate(element, newValue) {
-    element.classList.add('updating');
-    setTimeout(() => {
-      element.textContent = newValue;
-      element.classList.remove('updating');
-    }, 200);
+  const statusCell = row.cells[3];
+  const balanceCell = row.cells[4];
+  const chargeBalanceCell = row.cells[5];
+  const giftBalanceCell = row.cells[6];
+  const modelCell = row.cells[7];
+  const messageCell = row.cells[8];
+
+  // 更新行数据
+  row.dataset.isPaid = result.isPaid;
+  row.dataset.balance = result.balance ?? -1;
+  row.dataset.chargeBalance = result.chargeBalance ?? -1;
+  row.dataset.giftBalance = result.giftBalance ?? -1;
+
+  // 更新状态
+  statusCell.textContent = result.success ? '有效' : '无效';
+  statusCell.className = result.success ? 'status-valid' : 'status-invalid';
+  
+  // 显示总余额
+  if (result.balance !== undefined && result.balance !== null) {
+    balanceCell.textContent = result.balance.toFixed(4);
+  } else {
+    balanceCell.textContent = 'N/A';
+  }
+  
+  // 显示充值余额（仅对siliconflow显示）
+  if (type === 'siliconflow' && result.chargeBalance !== undefined && result.chargeBalance !== null) {
+    chargeBalanceCell.textContent = result.chargeBalance.toFixed(4);
+  } else {
+    chargeBalanceCell.textContent = type === 'siliconflow' ? '0.0000' : 'N/A';
+  }
+  
+  // 显示赠送余额（仅对siliconflow显示）
+  if (type === 'siliconflow' && result.giftBalance !== undefined && result.giftBalance !== null) {
+    giftBalanceCell.textContent = result.giftBalance.toFixed(4);
+  } else {
+    giftBalanceCell.textContent = type === 'siliconflow' ? '0.0000' : 'N/A';
+  }
+  
+  messageCell.innerHTML = result.message;
+
+  // 显示测试时使用的模型
+  if (type === 'custom') {
+    const model = batchModelSelectEl.style.display !== 'none'
+      ? batchModelSelectEl.value
+      : batchModelInputEl.value;
+    modelCell.textContent = model || 'N/A';
+  } else {
+    // 为其他API类型显示默认测试模型
+    const defaultModels = {
+      'openai': 'gpt-4o',
+      'claude': 'claude-3-5-sonnet-20241022',
+      'gemini': 'gemini-1.5-flash',
+      'deepseek': 'deepseek-chat',
+      'groq': 'llama-3.3-70b-versatile',
+      'siliconflow': 'Qwen/Qwen2.5-72B-Instruct',
+      'xai': 'grok-3-mini',
+      'openrouter': 'openrouter/auto'
+    };
+    modelCell.textContent = defaultModels[type] || 'N/A';
   }
 
-  const checkKey = async (keyData, index) => {
-    const { key, type, row } = keyData;
+  // 更新进度
+  stats.completedChecks++;
+  const percentage = (stats.completedChecks / stats.totalKeys) * 100;
+  batchProgressBar.style.width = `${percentage}%`;
+  batchProgressText.textContent = `${stats.completedChecks} / ${stats.totalKeys}`;
+
+  // 更新统计
+  if (result.success) {
+    stats.validCount++;
+    animateCountUpdate(validCountEl, stats.validCount);
+  } else {
+    stats.invalidCount++;
+    animateCountUpdate(invalidCountEl, stats.invalidCount);
+  }
+}
+
+/**
+ * 动画更新计数显示
+ * @param {HTMLElement} element - 要更新的元素
+ * @param {number} newValue - 新值
+ */
+function animateCountUpdate(element, newValue) {
+  element.classList.add('updating');
+  setTimeout(() => {
+    element.textContent = newValue;
+    element.classList.remove('updating');
+  }, 200);
+}
+
+/**
+ * 运行并发检测
+ * @param {Array} tasks - 任务数组
+ * @param {Array} rowsData - 行数据数组
+ * @param {number} concurrency - 并发数
+ * @param {Function} updateCallback - 更新回调函数
+ * @returns {Promise} 所有任务完成的Promise
+ */
+async function runConcurrentChecks(tasks, rowsData, concurrency, updateCallback) {
+  const queue = [...tasks];
+  let activeChecks = 0;
+
+  const checkKey = async (task) => {
+    const { key, type, index } = task;
+    const keyData = rowsData[index];
+    const row = keyData.row;
     const statusCell = row.cells[3];
-    const balanceCell = row.cells[4];
-    const chargeBalanceCell = row.cells[5];
-    const giftBalanceCell = row.cells[6];
-    const modelCell = row.cells[7];
-    const messageCell = row.cells[8];
+
+    // 更新数据状态为检测中
+    if (resultsData[index]) {
+      resultsData[index].status = 'checking';
+    }
 
     statusCell.textContent = '检测中...';
     statusCell.className = 'status-checking';
@@ -194,70 +335,15 @@ async function startBatchCheck() {
     keyData.balance = result.balance;
     keyData.chargeBalance = result.chargeBalance;
     keyData.giftBalance = result.giftBalance;
-    
-    row.dataset.isPaid = result.isPaid;
-    row.dataset.balance = result.balance ?? -1;
-    row.dataset.chargeBalance = result.chargeBalance ?? -1;
-    row.dataset.giftBalance = result.giftBalance ?? -1;
 
-    statusCell.textContent = result.success ? '有效' : '无效';
-    statusCell.className = result.success ? 'status-valid' : 'status-invalid';
-    
-    // 显示总余额
-    if (result.balance !== undefined && result.balance !== null) {
-        balanceCell.textContent = result.balance.toFixed(4);
-    } else {
-        balanceCell.textContent = 'N/A';
-    }
-    
-    // 显示充值余额（仅对siliconflow显示）
-    if (type === 'siliconflow' && result.chargeBalance !== undefined && result.chargeBalance !== null) {
-        chargeBalanceCell.textContent = result.chargeBalance.toFixed(4);
-    } else {
-        chargeBalanceCell.textContent = type === 'siliconflow' ? '0.0000' : 'N/A';
-    }
-    
-    // 显示赠送余额（仅对siliconflow显示）
-    if (type === 'siliconflow' && result.giftBalance !== undefined && result.giftBalance !== null) {
-        giftBalanceCell.textContent = result.giftBalance.toFixed(4);
-    } else {
-        giftBalanceCell.textContent = type === 'siliconflow' ? '0.0000' : 'N/A';
-    }
-    
-    messageCell.innerHTML = result.message;
-
-    // 显示测试时使用的模型
-    if (type === 'custom') {
-        const model = batchModelSelectEl.style.display !== 'none'
-            ? batchModelSelectEl.value
-            : batchModelInputEl.value;
-        modelCell.textContent = model || 'N/A';
-    } else {
-        // 为其他API类型显示默认测试模型
-        const defaultModels = {
-            'openai': 'gpt-4o',
-            'claude': 'claude-3-5-sonnet-20241022',
-            'gemini': 'gemini-1.5-flash',
-            'deepseek': 'deepseek-chat',
-            'groq': 'llama-3.3-70b-versatile',
-            'siliconflow': 'Qwen/Qwen2.5-72B-Instruct',
-            'xai': 'grok-3-mini',
-            'openrouter': 'openrouter/auto'
-        };
-        modelCell.textContent = defaultModels[type] || 'N/A';
-    }
-
-    updateProgress();
-    updateStats(result.success);
+    updateCallback(result, row, type, index);
   };
 
   const worker = async () => {
     while (queue.length > 0) {
       activeChecks++;
-      const key = queue.shift();
-      const keyData = results.find(r => r.key === key);
-      const index = results.indexOf(keyData);
-      await checkKey(keyData, index);
+      const task = queue.shift();
+      await checkKey(task);
       activeChecks--;
     }
   };
@@ -268,19 +354,24 @@ async function startBatchCheck() {
   }
 
   await Promise.all(workers);
-  logger.info('批量检测完成', { total: keys.length });
+}
+
+/**
+ * 完成批量检测的收尾工作
+ * @param {Object} stats - 统计信息
+ */
+function finalizeBatchCheck(stats) {
+  logger.info('批量检测完成', { total: stats.totalKeys });
 
   // 隐藏进度条，但保持统计信息显示
   setTimeout(() => {
-      batchProgressContainer.style.display = 'none';
-      // 不隐藏统计信息，让用户能看到最终结果
-      // batchStatsEl.style.display = 'none';
-      
-      // 添加完成状态的视觉反馈
-      batchStatsEl.classList.add('completed');
-      
-      // 显示完成提示
-      showCompletionSummary(validCount, invalidCount, keys.length);
+    batchProgressContainer.style.display = 'none';
+    
+    // 添加完成状态的视觉反馈
+    batchStatsEl.classList.add('completed');
+    
+    // 显示完成提示
+    showCompletionSummary(stats.validCount, stats.invalidCount, stats.totalKeys);
   }, 1000);
 
   // 默认按充值余额优先级排序
@@ -289,20 +380,69 @@ async function startBatchCheck() {
   // 添加排序事件监听器
   const balanceHeader = document.getElementById('balance-header');
   if (balanceHeader) {
-      balanceHeader.addEventListener('click', () => sortResults('balance'));
+    balanceHeader.addEventListener('click', () => sortResults('balance'));
   }
   const chargeBalanceHeader = document.getElementById('charge-balance-header');
   if (chargeBalanceHeader) {
-      chargeBalanceHeader.addEventListener('click', () => sortResults('chargeBalance'));
+    chargeBalanceHeader.addEventListener('click', () => sortResults('chargeBalance'));
   }
   const giftBalanceHeader = document.getElementById('gift-balance-header');
   if (giftBalanceHeader) {
-      giftBalanceHeader.addEventListener('click', () => sortResults('giftBalance'));
+    giftBalanceHeader.addEventListener('click', () => sortResults('giftBalance'));
   }
   const statusHeader = document.getElementById('status-header');
   if (statusHeader) {
-      statusHeader.addEventListener('click', () => sortResults('status'));
+    statusHeader.addEventListener('click', () => sortResults('status'));
   }
+}
+
+// 全局变量用于维护结果数据状态
+let resultsData = [];
+
+async function startBatchCheck() {
+  // 1. 验证输入
+  const keys = batchApiKeysEl.value.split('\n').map(k => k.trim()).filter(Boolean);
+  if (keys.length === 0) {
+    batchResultsEl.innerHTML = '<p>请输入至少一个API密钥。</p>';
+    return;
+  }
+
+  // 2. 获取配置
+  const concurrency = parseInt(concurrencyLimitEl.value, 10) || 5;
+  const selectedProvider = batchProviderEl.value;
+
+  // 3. 初始化结果数据数组
+  resultsData = keys.map((key, index) => {
+    const type = selectedProvider === 'auto' ? detectKeyType(key) : selectedProvider;
+    return {
+      index: index,
+      key: key,
+      type: type,
+      status: 'pending',
+      message: '等待检测...',
+      isPaid: false,
+      balance: -1,
+      chargeBalance: -1,
+      giftBalance: -1
+    };
+  });
+
+  // 4. 设置UI界面
+  const { rowsData, stats } = setupBatchUI(keys);
+
+  // 5. 创建任务队列
+  const tasks = createTaskQueue(keys, selectedProvider);
+
+  // 6. 创建更新回调函数
+  const updateCallback = (result, row, type, index) => {
+    updateBatchProgress(result, row, stats, type, index);
+  };
+
+  // 7. 运行并发检测
+  await runConcurrentChecks(tasks, rowsData, concurrency, updateCallback);
+
+  // 8. 完成收尾工作
+  finalizeBatchCheck(stats);
 }
 
 function showCompletionSummary(validCount, invalidCount, totalCount) {
@@ -314,12 +454,83 @@ function showCompletionSummary(validCount, invalidCount, totalCount) {
   showNotification(message, validCount > 0 ? 'success' : 'info');
 }
 
+/**
+ * 根据数据数组渲染表格
+ * @param {Array} sortedData - 已排序的数据数组
+ */
+function renderTable(sortedData) {
+  const tbody = document.getElementById('batch-results-tbody');
+  if (!tbody) return;
+
+  let html = '';
+  sortedData.forEach((data, displayIndex) => {
+    const shortKey = `${data.key.substring(0, 4)}...${data.key.substring(data.key.length - 4)}`;
+    const statusText = data.status === 'valid' ? '有效' :
+                      data.status === 'invalid' ? '无效' :
+                      data.status === 'checking' ? '检测中...' : '等待检测...';
+    const statusClass = data.status === 'valid' ? 'status-valid' :
+                       data.status === 'invalid' ? 'status-invalid' :
+                       data.status === 'checking' ? 'status-checking' : '';
+
+    // 计算余额显示
+    const balanceText = (data.balance !== undefined && data.balance !== null && data.balance !== -1)
+      ? data.balance.toFixed(4) : 'N/A';
+    
+    const chargeBalanceText = data.type === 'siliconflow'
+      ? ((data.chargeBalance !== undefined && data.chargeBalance !== null && data.chargeBalance !== -1)
+         ? data.chargeBalance.toFixed(4) : '0.0000')
+      : 'N/A';
+    
+    const giftBalanceText = data.type === 'siliconflow'
+      ? ((data.giftBalance !== undefined && data.giftBalance !== null && data.giftBalance !== -1)
+         ? data.giftBalance.toFixed(4) : '0.0000')
+      : 'N/A';
+
+    // 计算模型显示
+    let modelText = 'N/A';
+    if (data.type === 'custom') {
+      const model = batchModelSelectEl.style.display !== 'none'
+        ? batchModelSelectEl.value
+        : batchModelInputEl.value;
+      modelText = model || 'N/A';
+    } else {
+      const defaultModels = {
+        'openai': 'gpt-4o',
+        'claude': 'claude-3-5-sonnet-20241022',
+        'gemini': 'gemini-1.5-flash',
+        'deepseek': 'deepseek-chat',
+        'groq': 'llama-3.3-70b-versatile',
+        'siliconflow': 'Qwen/Qwen2.5-72B-Instruct',
+        'xai': 'grok-3-mini',
+        'openrouter': 'openrouter/auto'
+      };
+      modelText = defaultModels[data.type] || 'N/A';
+    }
+
+    html += `
+      <tr id="result-row-${data.index}" data-full-key="${data.key}"
+          data-is-paid="${data.isPaid}" data-balance="${data.balance}"
+          data-charge-balance="${data.chargeBalance}" data-gift-balance="${data.giftBalance}">
+        <td>${displayIndex + 1}</td>
+        <td>${shortKey}</td>
+        <td>${data.type || '未知'}</td>
+        <td class="${statusClass}">${statusText}</td>
+        <td class="balance-cell">${balanceText}</td>
+        <td class="charge-balance-cell">${chargeBalanceText}</td>
+        <td class="gift-balance-cell">${giftBalanceText}</td>
+        <td class="model-cell">${modelText}</td>
+        <td>${data.message}</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+}
+
 let sortDirection = {};
 
 function sortResults(column) {
-    const tbody = document.getElementById('batch-results-tbody');
-    if (!tbody) return;
-    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (!resultsData || resultsData.length === 0) return;
 
     // Set default direction if not set
     if (!sortDirection[column]) {
@@ -336,7 +547,7 @@ function sortResults(column) {
         }
     }
     
-    // Update UI
+    // Update UI indicators
     document.querySelectorAll('.sort-indicator').forEach(el => el.textContent = '');
     const header = document.getElementById(`${column}-header`);
     if (header) {
@@ -346,14 +557,13 @@ function sortResults(column) {
         }
     }
 
-    const statusOrder = { '有效': 0, '无效': 1, '检测中...': 2, '等待检测...': 3 };
+    const statusOrder = { 'valid': 0, 'invalid': 1, 'checking': 2, 'pending': 3 };
 
-    rows.sort((a, b) => {
+    // 对数据数组进行排序
+    const sortedData = [...resultsData].sort((a, b) => {
         // Always prioritize by status first
-        const statusTextA = a.cells[3].textContent.trim();
-        const statusTextB = b.cells[3].textContent.trim();
-        const statusA = statusOrder[statusTextA] ?? 99;
-        const statusB = statusOrder[statusTextB] ?? 99;
+        const statusA = statusOrder[a.status] ?? 99;
+        const statusB = statusOrder[b.status] ?? 99;
 
         if (statusA < statusB) return -1;
         if (statusA > statusB) return 1;
@@ -361,27 +571,27 @@ function sortResults(column) {
         // If status is the same, sort by the selected column
         let valA, valB;
         if (column === 'balance') {
-            valA = parseFloat(a.dataset.balance);
-            valB = parseFloat(b.dataset.balance);
+            valA = parseFloat(a.balance);
+            valB = parseFloat(b.balance);
             // N/A (-1) is always at the bottom
             if (valA === -1) valA = -Infinity;
             if (valB === -1) valB = -Infinity;
         } else if (column === 'chargeBalance') {
-            valA = parseFloat(a.dataset.chargeBalance);
-            valB = parseFloat(b.dataset.chargeBalance);
+            valA = parseFloat(a.chargeBalance);
+            valB = parseFloat(b.chargeBalance);
             // N/A (-1) is always at the bottom
             if (valA === -1) valA = -Infinity;
             if (valB === -1) valB = -Infinity;
         } else if (column === 'giftBalance') {
-            valA = parseFloat(a.dataset.giftBalance);
-            valB = parseFloat(b.dataset.giftBalance);
+            valA = parseFloat(a.giftBalance);
+            valB = parseFloat(b.giftBalance);
             // N/A (-1) is always at the bottom
             if (valA === -1) valA = -Infinity;
             if (valB === -1) valB = -Infinity;
         } else if (column === 'status') {
             // For status sorting, use charge balance as secondary sort (siliconflow priority)
-            valA = parseFloat(a.dataset.chargeBalance);
-            valB = parseFloat(b.dataset.chargeBalance);
+            valA = parseFloat(a.chargeBalance);
+            valB = parseFloat(b.chargeBalance);
             if (valA === -1) valA = -Infinity;
             if (valB === -1) valB = -Infinity;
         } else {
@@ -404,22 +614,20 @@ function sortResults(column) {
         return effectiveDirection === 'asc' ? comparison : -comparison;
     });
 
-    tbody.innerHTML = '';
-    rows.forEach(row => tbody.appendChild(row));
+    // 使用 renderTable 函数一次性更新 DOM
+    renderTable(sortedData);
 }
 
 
 function copyResults() {
-    const rows = Array.from(batchResultsEl.querySelectorAll('tr[data-full-key]'));
-    const validKeys = rows.map(row => {
-        const key = row.dataset.fullKey;
-        const isPaid = row.dataset.isPaid === 'true';
-        const balance = row.dataset.balance;
-        const chargeBalance = row.dataset.chargeBalance;
-        const giftBalance = row.dataset.giftBalance;
-        const isValid = row.querySelector('.status-valid');
-        return isValid ? { key, isPaid, balance, chargeBalance, giftBalance } : null;
-    }).filter(Boolean);
+    // 使用数据状态而不是 DOM 查询
+    const validKeys = resultsData.filter(data => data.status === 'valid').map(data => ({
+        key: data.key,
+        isPaid: data.isPaid,
+        balance: data.balance,
+        chargeBalance: data.chargeBalance,
+        giftBalance: data.giftBalance
+    }));
 
     if (validKeys.length === 0) {
         showNotification('没有可复制的有效密钥。', 'error');
@@ -597,25 +805,31 @@ function updateLineNumbers() {
     if (!batchLineNumbersEl || !batchApiKeysEl) return;
     
     const text = batchApiKeysEl.value;
-    const lines = text.split('\n');
-    const lineCount = lines.length;
+    const lineCount = text ? text.split('\n').length : 1;
     
-    // 只有行数变化时才更新行号
+    // 只有行数变化时才更新行号 DOM
     if (lineCount === lastLineCount) return;
+    
+    const previousLineCount = lastLineCount;
     lastLineCount = lineCount;
     
-    let lineNumbersHtml = '';
+    // 使用更高效的方式生成行号
+    const lineNumbers = [];
     for (let i = 1; i <= lineCount; i++) {
-        lineNumbersHtml += i + '\n';
+        lineNumbers.push(i);
     }
     
-    batchLineNumbersEl.textContent = lineNumbersHtml;
+    batchLineNumbersEl.textContent = lineNumbers.join('\n');
     
-    // 根据行数动态调整行号区域宽度
-    const maxDigits = lineCount.toString().length;
-    const minWidth = Math.max(35, maxDigits * 9 + 16); // 调整宽度计算
-    batchLineNumbersEl.style.minWidth = minWidth + 'px';
-    batchLineNumbersEl.style.maxWidth = Math.min(65, minWidth) + 'px';
+    // 只在行数位数发生变化时才调整宽度
+    const currentDigits = lineCount.toString().length;
+    const previousDigits = previousLineCount.toString().length;
+    
+    if (currentDigits !== previousDigits) {
+        const minWidth = Math.max(35, currentDigits * 9 + 16);
+        batchLineNumbersEl.style.minWidth = minWidth + 'px';
+        batchLineNumbersEl.style.maxWidth = Math.min(65, minWidth) + 'px';
+    }
 }
 
 // 同步滚动
@@ -634,51 +848,27 @@ function initLineNumbers() {
         batchLineNumbersEl.style.height = textareaHeight + 'px';
     }
     
+    // 创建节流版本的更新函数
+    const throttledUpdateLineNumbers = throttle(() => {
+        updateLineNumbers();
+        syncHeight();
+    }, 100);
+    
+    const throttledSyncHeight = throttle(syncHeight, 50);
+    
     // 初始显示行号和同步高度
     updateLineNumbers();
     syncHeight();
     
-    // 监听输入事件 - 只在行数变化时更新
-    batchApiKeysEl.addEventListener('input', () => {
-        updateLineNumbers();
-        syncHeight();
-    });
+    // 监听输入事件 - 使用节流优化性能
+    batchApiKeysEl.addEventListener('input', throttledUpdateLineNumbers);
     
-    // 监听滚动事件 - 直接同步，不使用requestAnimationFrame避免延迟
+    // 监听滚动事件 - 直接同步，保持流畅性
     batchApiKeysEl.addEventListener('scroll', syncScroll, { passive: true });
-    
-    // 监听键盘事件（处理回车、删除等可能改变行数的操作）
-    batchApiKeysEl.addEventListener('keydown', (e) => {
-        // 只在可能改变行数的按键时延迟更新
-        if (e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
-            setTimeout(() => {
-                updateLineNumbers();
-                syncHeight();
-            }, 0);
-        }
-    });
-    
-    // 监听粘贴事件
-    batchApiKeysEl.addEventListener('paste', () => {
-        setTimeout(() => {
-            updateLineNumbers();
-            syncHeight();
-        }, 0);
-    });
-    
-    // 监听剪切事件
-    batchApiKeysEl.addEventListener('cut', () => {
-        setTimeout(() => {
-            updateLineNumbers();
-            syncHeight();
-        }, 0);
-    });
     
     // 监听 textarea 大小变化
     if (window.ResizeObserver) {
-        const resizeObserver = new ResizeObserver(() => {
-            syncHeight();
-        });
+        const resizeObserver = new ResizeObserver(throttledSyncHeight);
         resizeObserver.observe(batchApiKeysEl);
     }
 }

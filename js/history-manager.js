@@ -299,3 +299,18 @@ export async function toggleHistoryPanel(historyContainer) {
     await initializeHistoryPanel();
   }
 }
+
+/**
+ * 刷新历史记录面板（仅当面板可见时）
+ */
+export async function refreshHistoryPanel() {
+  const historyPanel = document.getElementById('history');
+  
+  // 检查历史记录面板是否存在且可见（没有 hidden 类）
+  if (historyPanel && !historyPanel.classList.contains('hidden')) {
+    // 如果面板可见，则重新加载并显示最新的历史记录
+    if (historyDiv && historyDiv.querySelector('.history-container')) {
+      await initializeHistoryPanel();
+    }
+  }
+}
