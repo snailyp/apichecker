@@ -1,7 +1,7 @@
 import * as api from './api-services.js';
+import { getDefaultModel } from './config-manager.js';
 import * as logger from './logger.js';
 import { showNotification } from './ui-utils.js';
-import { getDefaultModel } from './config-manager.js';
 
 /**
  * 节流函数 - 限制函数调用频率
@@ -145,6 +145,22 @@ function setupBatchUI(keys) {
       <td class="model-cell"></td>
       <td>${message}</td>
     `;
+    
+    // 添加点击样式和事件监听器
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', () => {
+      // 从 resultsData 中找到对应的数据
+      const data = resultsData[index];
+      if (data) {
+        const textToCopy = formatKeyForCopy(data);
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          showNotification('已复制到剪贴板！', 'success');
+        }, () => {
+          showNotification('复制失败！', 'error');
+        });
+      }
+    });
+    
     tbody.appendChild(row);
     return row;
   }
@@ -506,6 +522,26 @@ function renderTable(sortedData) {
   });
 
   tbody.innerHTML = html;
+  
+  // 为每一行添加点击复制功能
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach((row, index) => {
+    const data = sortedData[index];
+    if (data) {
+      // 添加点击样式
+      row.style.cursor = 'pointer';
+      
+      // 添加点击事件监听器
+      row.addEventListener('click', () => {
+        const textToCopy = formatKeyForCopy(data);
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          showNotification('已复制到剪贴板！', 'success');
+        }, () => {
+          showNotification('复制失败！', 'error');
+        });
+      });
+    }
+  });
 }
 
 let sortDirection = {};
@@ -600,58 +636,103 @@ function sortResults(column) {
 }
 
 
+// 用此函数替换现有的 copyResults 函数
 function copyResults() {
-    // 使用数据状态而不是 DOM 查询
-    const validKeys = resultsData.filter(data => data.status === 'valid').map(data => ({
-        key: data.key,
-        isPaid: data.isPaid,
-        balance: data.balance,
-        chargeBalance: data.chargeBalance,
-        giftBalance: data.giftBalance
-    }));
+    const copyType = document.getElementById('copy-option').value;
 
-    if (validKeys.length === 0) {
-        showNotification('没有可复制的有效密钥。', 'error');
-        return;
+    if (copyType === 'valid') {
+        const validKeys = resultsData.filter(data => data.status === 'valid');
+        if (validKeys.length === 0) {
+            showNotification('没有可复制的有效结果。', 'error');
+            return;
+        }
+
+        const paidKeys = validKeys.filter(k => k.isPaid).map(k => {
+            const balanceValue = parseFloat(k.balance);
+            const chargeBalanceValue = parseFloat(k.chargeBalance);
+            const giftBalanceValue = parseFloat(k.giftBalance);
+            
+            if (!isNaN(balanceValue) && balanceValue !== -1) {
+                let balanceInfo = `总余额: ${balanceValue.toFixed(4)}`;
+                
+                // 为 siliconflow 添加详细余额信息
+                if (k.type === 'siliconflow' && !isNaN(chargeBalanceValue) && chargeBalanceValue !== -1 && !isNaN(giftBalanceValue) && giftBalanceValue !== -1) {
+                    balanceInfo += ` (充值: ${chargeBalanceValue.toFixed(4)}, 赠送: ${giftBalanceValue.toFixed(4)})`;
+                }
+                
+                return `${k.key} ---- ${balanceInfo}`;
+            }
+            return k.key;
+        });
+
+        const freeKeys = validKeys.filter(k => !k.isPaid).map(k => k.key);
+
+        let clipboardText = '';
+        if (paidKeys.length > 0) {
+            clipboardText += '付费：\n';
+            clipboardText += paidKeys.join('\n') + '\n\n';
+        }
+        if (freeKeys.length > 0) {
+            clipboardText += '免费：\n';
+            clipboardText += freeKeys.join('\n');
+        }
+
+        navigator.clipboard.writeText(clipboardText.trim()).then(() => {
+            showNotification('已复制并分组的有效密钥！', 'success');
+        }, () => {
+            showNotification('复制失败！', 'error');
+        });
+
+    } else { // For 'invalid' and 'all'
+        let dataToCopy = [];
+        let typeText = '';
+
+        if (copyType === 'invalid') {
+            dataToCopy = resultsData.filter(data => data.status === 'invalid');
+            typeText = '无效';
+        } else { // 'all'
+            dataToCopy = [...resultsData];
+            typeText = '全部';
+        }
+
+        if (dataToCopy.length === 0) {
+            showNotification(`没有可复制的${typeText}结果。`, 'error');
+            return;
+        }
+
+        const clipboardText = dataToCopy.map(formatKeyForCopy).join('\n');
+
+        navigator.clipboard.writeText(clipboardText.trim()).then(() => {
+            showNotification(`已复制${typeText}结果！`, 'success');
+        }, () => {
+            showNotification('复制失败！', 'error');
+        });
     }
+}
 
-    const paidKeys = validKeys.filter(k => k.isPaid).map(k => {
-        const balanceValue = parseFloat(k.balance);
-        const chargeBalanceValue = parseFloat(k.chargeBalance);
-        const giftBalanceValue = parseFloat(k.giftBalance);
-        
+/**
+ * 格式化单个密钥对象以用于剪贴板复制
+ * @param {object} data - 单个结果对象
+ * @returns {string} 格式化后的字符串
+ */
+function formatKeyForCopy(data) {
+    if (data.status === 'valid') {
+        const balanceValue = parseFloat(data.balance);
         if (!isNaN(balanceValue) && balanceValue !== -1) {
             let balanceInfo = `总余额: ${balanceValue.toFixed(4)}`;
-            
-            // 如果有充值余额和赠送余额信息（siliconflow），则显示详细信息
-            if (!isNaN(chargeBalanceValue) && chargeBalanceValue !== -1 &&
-                !isNaN(giftBalanceValue) && giftBalanceValue !== -1) {
+            const chargeBalanceValue = parseFloat(data.chargeBalance);
+            const giftBalanceValue = parseFloat(data.giftBalance);
+            // 为 siliconflow 添加详细余额信息
+            if (data.type === 'siliconflow' && !isNaN(chargeBalanceValue) && chargeBalanceValue !== -1 && !isNaN(giftBalanceValue) && giftBalanceValue !== -1) {
                 balanceInfo += ` (充值: ${chargeBalanceValue.toFixed(4)}, 赠送: ${giftBalanceValue.toFixed(4)})`;
             }
-            
-            return `${k.key} ---- ${balanceInfo}`;
+            return `${data.key} ---- ${balanceInfo}`;
         }
-        return k.key;
-    });
-    const freeKeys = validKeys.filter(k => !k.isPaid).map(k => k.key);
-
-    let clipboardText = '';
-
-    if (paidKeys.length > 0) {
-        clipboardText += '付费：\n';
-        clipboardText += paidKeys.join('\n') + '\n\n';
+        return data.key; // 如果没有余额信息，只返回密钥
+    } else {
+        // 对无效、检测中或待检测的密钥，显示其消息
+        return `${data.key} ---- ${data.message}`;
     }
-
-    if (freeKeys.length > 0) {
-        clipboardText += '免费：\n';
-        clipboardText += freeKeys.join('\n');
-    }
-
-    navigator.clipboard.writeText(clipboardText.trim()).then(() => {
-        showNotification('已复制并分组的有效密钥！', 'success');
-    }, () => {
-        showNotification('复制失败！', 'error');
-    });
 }
 
 
