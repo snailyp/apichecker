@@ -681,7 +681,19 @@ function tidyKeys() {
     }
   }
 
-  // 去重并格式化
+  // 如果没有找到匹配的密钥，则对原始文本进行基础整理和去重
+  if (keys.length === 0) {
+    // 按行分割，去除空行和空白字符，然后去重
+    const lines = text.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    keys = [...new Set(lines)];
+  } else {
+    // 对找到的密钥进行去重
+    keys = [...new Set(keys)];
+  }
+
+  // 最终去重并格式化
   const uniqueKeys = [...new Set(keys)];
   batchApiKeysEl.value = uniqueKeys.join('\n');
   
@@ -813,6 +825,52 @@ function updateLineNumbers() {
     }
 }
 
+/**
+ * 自动识别和去重密钥（在文本框内容变化时触发）
+ */
+function autoDetectAndDeduplicateKeys() {
+  const provider = batchProviderEl.value;
+  const text = batchApiKeysEl.value;
+  
+  // 如果文本为空，直接返回
+  if (!text.trim()) {
+    return;
+  }
+  
+  let keys = [];
+
+  if (provider === 'auto') {
+    // 自动检测所有类型的 key
+    for (const keyType in api.KEY_PATTERNS) {
+      const pattern = api.KEY_PATTERNS[keyType];
+      const foundKeys = text.match(pattern) || [];
+      keys.push(...foundKeys);
+    }
+  } else {
+    // 只检测指定厂商的 key
+    const pattern = api.KEY_PATTERNS[provider];
+    if (pattern) {
+      keys = text.match(pattern) || [];
+    }
+  }
+
+  // 如果找到了匹配的密钥，进行去重并更新文本框
+  if (keys.length > 0) {
+    // 对找到的密钥进行去重
+    const uniqueKeys = [...new Set(keys)];
+    const newText = uniqueKeys.join('\n');
+    
+    // 只有当内容发生变化时才更新，避免无限循环
+    if (newText !== text.trim()) {
+      batchApiKeysEl.value = newText;
+      // 更新行号（但不再次触发自动识别，避免递归）
+      setTimeout(() => {
+        updateLineNumbers();
+      }, 0);
+    }
+  }
+}
+
 // 同步滚动
 function syncScroll() {
     if (!batchLineNumbersEl || !batchApiKeysEl) return;
@@ -829,10 +887,11 @@ function initLineNumbers() {
         batchLineNumbersEl.style.height = textareaHeight + 'px';
     }
     
-    // 创建节流版本的更新函数
+    // 创建节流版本的更新函数，包含自动识别和去重
     const throttledUpdateLineNumbers = throttle(() => {
         updateLineNumbers();
         syncHeight();
+        autoDetectAndDeduplicateKeys();
     }, 100);
     
     const throttledSyncHeight = throttle(syncHeight, 50);
