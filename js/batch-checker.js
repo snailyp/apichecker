@@ -85,6 +85,24 @@ function detectKeyType(key) {
   return null;
 }
 
+/**
+ * 获取默认API URL
+ * @param {string} type - API类型
+ * @returns {string} API URL
+ */
+function getDefaultApiUrl(type) {
+  const urlMap = {
+    openai: 'https://api.openai.com/v1/chat/completions',
+    claude: 'https://api.anthropic.com/v1/messages',
+    gemini: 'https://generativelanguage.googleapis.com/v1beta/models',
+    deepseek: 'https://api.deepseek.com/v1/chat/completions',
+    groq: 'https://api.groq.com/openai/v1/chat/completions',
+    siliconflow: 'https://api.siliconflow.cn/v1/chat/completions',
+    xai: 'https://api.x.ai/v1/chat/completions',
+    openrouter: 'https://openrouter.ai/api/v1/chat/completions'
+  };
+  return urlMap[type] || 'N/A';
+}
 
 /**
  * 设置批量检测的UI界面
@@ -112,6 +130,7 @@ function setupBatchUI(keys) {
             <th>密钥</th>
             <th>类型</th>
             <th id="status-header" style="cursor: pointer;">状态<span class="sort-indicator"></span></th>
+            <th>URL</th>
             <th id="balance-header" style="cursor: pointer;">总余额<span class="sort-indicator"></span></th>
             <th id="charge-balance-header" style="cursor: pointer;">充值余额<span class="sort-indicator"></span></th>
             <th id="gift-balance-header" style="cursor: pointer;">赠送余额<span class="sort-indicator"></span></th>
@@ -134,11 +153,28 @@ function setupBatchUI(keys) {
     const row = document.createElement('tr');
     row.id = `result-row-${index}`;
     row.dataset.fullKey = key;
+    
+    // 获取URL信息
+    let url = 'N/A';
+    if (type === 'custom') {
+      const endpoint = batchCustomEndpointEl.value;
+      if (endpoint) {
+        const processedEndpoint = endpoint.endsWith("/") ? endpoint : endpoint + "/v1/";
+        url = `${processedEndpoint}chat/completions`;
+      }
+    } else if (type && api.getApiEndpoint) {
+      // 如果api-services.js中有获取端点的函数，使用它
+      url = api.getApiEndpoint(type) || getDefaultApiUrl(type);
+    } else {
+      url = getDefaultApiUrl(type);
+    }
+    
     row.innerHTML = `
       <td>${index + 1}</td>
       <td>${shortKey}</td>
       <td>${type || '未知'}</td>
       <td class="status-${status}">${status}</td>
+      <td class="url-cell">${url}</td>
       <td class="balance-cell">N/A</td>
       <td class="charge-balance-cell">N/A</td>
       <td class="gift-balance-cell">N/A</td>
@@ -222,11 +258,11 @@ function updateBatchProgress(result, row, stats, type, index) {
   }
 
   const statusCell = row.cells[3];
-  const balanceCell = row.cells[4];
-  const chargeBalanceCell = row.cells[5];
-  const giftBalanceCell = row.cells[6];
-  const modelCell = row.cells[7];
-  const messageCell = row.cells[8];
+  const balanceCell = row.cells[5];
+  const chargeBalanceCell = row.cells[6];
+  const giftBalanceCell = row.cells[7];
+  const modelCell = row.cells[8];
+  const messageCell = row.cells[9];
 
   // 更新行数据
   row.dataset.isPaid = result.isPaid;
@@ -504,6 +540,18 @@ function renderTable(sortedData) {
       modelText = getDefaultModel(data.type) || 'N/A';
     }
 
+    // 计算URL显示
+    let urlText = 'N/A';
+    if (data.type === 'custom') {
+      const endpoint = batchCustomEndpointEl.value;
+      if (endpoint) {
+        const processedEndpoint = endpoint.endsWith("/") ? endpoint : endpoint + "/v1/";
+        urlText = `${processedEndpoint}chat/completions`;
+      }
+    } else {
+      urlText = getDefaultApiUrl(data.type);
+    }
+
     html += `
       <tr id="result-row-${data.index}" data-full-key="${data.key}"
           data-is-paid="${data.isPaid}" data-balance="${data.balance}"
@@ -512,6 +560,7 @@ function renderTable(sortedData) {
         <td>${shortKey}</td>
         <td>${data.type || '未知'}</td>
         <td class="${statusClass}">${statusText}</td>
+        <td class="url-cell">${urlText}</td>
         <td class="balance-cell">${balanceText}</td>
         <td class="charge-balance-cell">${chargeBalanceText}</td>
         <td class="gift-balance-cell">${giftBalanceText}</td>

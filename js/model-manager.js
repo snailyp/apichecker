@@ -3,8 +3,8 @@
  */
 
 import { fetchModels, testModel } from './api-services.js';
-import { createLoadingAnimation, createModelTestTable, copyToClipboard } from './ui-utils.js';
 import * as logger from './logger.js';
+import { copyToClipboard, createLoadingAnimation, createModelTestTable } from './ui-utils.js';
 
 /**
  * 获取并显示模型列表
@@ -30,6 +30,9 @@ export async function loadModelList(endpoint, apiKey) {
       <div class="model-select-all">
         <button type="button" id="selectAllModels">全选</button>
         <button type="button" id="deselectAllModels">取消全选</button>
+      </div>
+      <div class="model-search-container">
+        <input type="text" id="model-search-input" placeholder="搜索模型..." />
       </div>
     `;
 
@@ -61,6 +64,9 @@ export async function loadModelList(endpoint, apiKey) {
 
       // 添加全选/取消全选功能
       addModelSelectionListeners();
+      
+      // 添加搜索过滤功能
+      addModelSearchListener();
 
       if (resultDiv) {
         resultDiv.innerHTML = "✅ 成功获取模型列表";
@@ -89,14 +95,26 @@ function addModelSelectionListeners() {
   if (selectAllBtn) {
     selectAllBtn.addEventListener("click", () => {
       const checkboxes = modelCheckboxes.querySelectorAll('input[type="checkbox"]');
-      checkboxes.forEach((checkbox) => (checkbox.checked = true));
+      checkboxes.forEach((checkbox) => {
+        // 检查复选框的父容器是否可见
+        const parentItem = checkbox.closest('.model-checkbox-item');
+        if (parentItem && parentItem.style.display !== 'none') {
+          checkbox.checked = true;
+        }
+      });
     });
   }
 
   if (deselectAllBtn) {
     deselectAllBtn.addEventListener("click", () => {
       const checkboxes = modelCheckboxes.querySelectorAll('input[type="checkbox"]');
-      checkboxes.forEach((checkbox) => (checkbox.checked = false));
+      checkboxes.forEach((checkbox) => {
+        // 检查复选框的父容器是否可见
+        const parentItem = checkbox.closest('.model-checkbox-item');
+        if (parentItem && parentItem.style.display !== 'none') {
+          checkbox.checked = false;
+        }
+      });
     });
   }
 }
@@ -194,4 +212,33 @@ function addCopyButtonsListeners(results) {
       copyToClipboard(matchedModels.join(","), this);
     });
   }
+}
+
+/**
+ * 添加模型搜索过滤功能
+ */
+function addModelSearchListener() {
+  const searchInput = document.getElementById("model-search-input");
+  const modelCheckboxes = document.getElementById("modelCheckboxes");
+
+  if (!searchInput || !modelCheckboxes) return;
+
+  searchInput.addEventListener("input", (event) => {
+    const searchKeyword = event.target.value.trim().toLowerCase();
+    const modelItems = modelCheckboxes.querySelectorAll(".model-checkbox-item");
+
+    modelItems.forEach((item) => {
+      const label = item.querySelector("label");
+      if (label) {
+        const modelName = label.textContent.toLowerCase();
+        
+        // 如果模型名称包含搜索关键词，则显示该模型项；否则隐藏它
+        if (modelName.includes(searchKeyword)) {
+          item.style.display = "block";
+        } else {
+          item.style.display = "none";
+        }
+      }
+    });
+  });
 }

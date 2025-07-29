@@ -513,13 +513,19 @@ html {
 /* 修改按钮组样式 */
 .action-buttons {
   position: fixed;
-  right: 20px;
+  right: -30px; /* 默认隐藏，只露出10px */
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) translateX(0);
   display: flex;
   flex-direction: column;
   gap: 12px;
   z-index: 1000;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-left: 10px; /* 为悬停区域提供空间 */
+}
+
+.action-buttons:hover {
+  transform: translateY(-50%) translateX(-30px); /* 悬停时完全显示 */
 }
 
 .action-buttons button {
@@ -581,7 +587,12 @@ html {
 /* 在小屏幕上调整位置 */
 @media (max-width: 768px) {
   .action-buttons {
-    right: 10px;
+    right: -25px; /* 小屏幕上稍微调整隐藏位置 */
+    padding-left: 8px;
+  }
+  
+  .action-buttons:hover {
+    transform: translateY(-50%) translateX(-25px);
   }
 }
 
@@ -695,17 +706,19 @@ html {
   display: flex;
   align-items: center;
   padding: 4px 0;
+  gap: 8px;
 }
 
 .model-checkbox-item input[type="checkbox"] {
-  margin-right: 8px;
   width: auto;
+  flex-shrink: 0;
 }
 
 .model-checkbox-item label {
   margin: 0;
   font-size: 13px;
   cursor: pointer;
+  flex: 1;
 }
 
 .copy-models-btn {
@@ -1361,6 +1374,7 @@ html {
   top: 0;
   z-index: 10;
   border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
 }
 
 #batchResults th:hover {
@@ -1626,9 +1640,9 @@ html {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 32px;
   margin: 16px 0;
-  padding: 12px 16px;
+  padding: 16px 24px;
   background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -1649,16 +1663,16 @@ html {
 
 .stats-item {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
+  gap: 12px;
+  padding: 12px 20px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.8);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  min-width: 80px;
+  min-width: 120px;
 }
 
 .stats-item:hover {
@@ -1680,18 +1694,20 @@ html {
 }
 
 .stats-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .stats-count {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   line-height: 1;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  min-width: 32px;
+  text-align: center;
 }
 
 .valid-stats {
@@ -1758,30 +1774,32 @@ html {
 @media (max-width: 768px) {
   #batch-stats {
     flex-direction: row;
-    gap: 12px;
-    padding: 10px 12px;
+    gap: 16px;
+    padding: 12px 16px;
   }
   
   .stats-item {
-    flex-direction: column;
+    flex-direction: row;
     min-width: auto;
     width: auto;
     justify-content: center;
-    padding: 6px 12px;
+    padding: 8px 16px;
+    gap: 8px;
   }
   
   .stats-icon {
-    width: 24px;
-    height: 24px;
-    font-size: 14px;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
   }
   
   .stats-label {
-    font-size: 11px;
+    font-size: 12px;
   }
   
   .stats-count {
-    font-size: 18px;
+    font-size: 20px;
+    min-width: 24px;
   }
 }
 
@@ -2421,4 +2439,37 @@ html {
   background: linear-gradient(135deg, #1557b0, #3367d6);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(26, 115, 232, 0.4);
+}
+
+/* 模型搜索框样式 */
+#model-search-input {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  max-width: 100%;
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  color: #2d3748;
+}
+
+#model-search-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+}
+
+#model-search-input:hover {
+  border-color: #1a73e8;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#model-search-input::placeholder {
+  color: #a0aec0;
+  font-style: italic;
 }
