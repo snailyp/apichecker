@@ -2,8 +2,8 @@
  * API服务模块 - 处理各种API的请求和验证
  */
 
-import * as logger from './logger.js';
 import { getDefaultModel } from './config-manager.js';
+import * as logger from './logger.js';
 
 // API密钥的正则表达式
 export const KEY_PATTERNS = {
@@ -100,7 +100,6 @@ export async function checkOpenAIKey(apiKey) {
     body: {
       model: defaultModel,
       messages: [{ role: "user", content: "Hi" }],
-      max_tokens: 10,
     },
     errorMessagePath: "error.message"
   });

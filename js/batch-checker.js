@@ -689,10 +689,20 @@ function sortResults(column) {
 function copyResults() {
     const copyType = document.getElementById('copy-option').value;
 
-    if (copyType === 'valid') {
+    if (copyType === 'valid' || copyType === 'valid_keys_only') {
         const validKeys = resultsData.filter(data => data.status === 'valid');
         if (validKeys.length === 0) {
             showNotification('没有可复制的有效结果。', 'error');
+            return;
+        }
+
+        if (copyType === 'valid_keys_only') {
+            const keysOnly = validKeys.map(k => k.key).join('\n');
+            navigator.clipboard.writeText(keysOnly).then(() => {
+                showNotification('已复制所有有效密钥！', 'success');
+            }, () => {
+                showNotification('复制失败！', 'error');
+            });
             return;
         }
 
