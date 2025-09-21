@@ -43,6 +43,7 @@ const batchProgressText = document.getElementById('batchProgressText');
 const batchStatsEl = document.getElementById('batch-stats');
 const validCountEl = document.getElementById('valid-count');
 const invalidCountEl = document.getElementById('invalid-count');
+const ratelimitedCountEl = document.getElementById('ratelimited-count');
 
 const keyCheckMap = {
   openai: api.checkOpenAIKey,
@@ -115,6 +116,7 @@ function setupBatchUI(keys) {
   batchStatsEl.classList.remove('completed');
   validCountEl.textContent = '0';
   invalidCountEl.textContent = '0';
+  ratelimitedCountEl.textContent = '0';
   batchProgressContainer.style.display = 'block';
   batchProgressBar.style.width = '0%';
   batchProgressText.textContent = `0 / ${keys.length}`;
@@ -249,7 +251,7 @@ function createTaskQueue(keys, apiProvider) {
 function updateBatchProgress(result, row, stats, type, index) {
   // 首先更新数据状态
   if (index !== undefined && resultsData[index]) {
-    resultsData[index].status = result.success ? 'valid' : 'invalid';
+    resultsData[index].status = result.success ? 'valid' : (result.status || 'invalid');
     resultsData[index].message = result.message;
     resultsData[index].isPaid = result.isPaid || false;
     resultsData[index].balance = result.balance ?? -1;
@@ -271,8 +273,16 @@ function updateBatchProgress(result, row, stats, type, index) {
   row.dataset.giftBalance = result.giftBalance ?? -1;
 
   // 更新状态
-  statusCell.textContent = result.success ? '有效' : '无效';
-  statusCell.className = result.success ? 'status-valid' : 'status-invalid';
+  if (result.success) {
+    statusCell.textContent = '有效';
+    statusCell.className = 'status-valid';
+  } else if (result.status === 'ratelimited') {
+    statusCell.textContent = '限速';
+    statusCell.className = 'status-ratelimited';
+  } else {
+    statusCell.textContent = '无效';
+    statusCell.className = 'status-invalid';
+  }
   
   // 显示总余额
   if (result.balance !== undefined && result.balance !== null) {
@@ -318,6 +328,9 @@ function updateBatchProgress(result, row, stats, type, index) {
   if (result.success) {
     stats.validCount++;
     animateCountUpdate(validCountEl, stats.validCount);
+  } else if (result.status === 'ratelimited') {
+    stats.ratelimitedCount = (stats.ratelimitedCount || 0) + 1;
+    animateCountUpdate(ratelimitedCountEl, stats.ratelimitedCount);
   } else {
     stats.invalidCount++;
     animateCountUpdate(invalidCountEl, stats.invalidCount);
@@ -414,7 +427,7 @@ function finalizeBatchCheck(stats) {
     batchStatsEl.classList.add('completed');
     
     // 显示完成提示
-    showCompletionSummary(stats.validCount, stats.invalidCount, stats.totalKeys);
+    showCompletionSummary(stats.validCount, stats.invalidCount, stats.ratelimitedCount || 0, stats.totalKeys);
   }, 1000);
 
   // 默认按充值余额优先级排序
@@ -488,10 +501,10 @@ async function startBatchCheck() {
   finalizeBatchCheck(stats);
 }
 
-function showCompletionSummary(validCount, invalidCount, totalCount) {
+function showCompletionSummary(validCount, invalidCount, ratelimitedCount, totalCount) {
   const successRate = ((validCount / totalCount) * 100).toFixed(1);
   let message = `检测完成！共检测 ${totalCount} 个密钥，`;
-  message += `有效 ${validCount} 个，无效 ${invalidCount} 个`;
+  message += `有效 ${validCount} 个，无效 ${invalidCount} 个，限速 ${ratelimitedCount} 个`;
   message += `（成功率：${successRate}%）`;
   
   showNotification(message, validCount > 0 ? 'success' : 'info');
@@ -510,9 +523,11 @@ function renderTable(sortedData) {
     const shortKey = `${data.key.substring(0, 4)}...${data.key.substring(data.key.length - 4)}`;
     const statusText = data.status === 'valid' ? '有效' :
                       data.status === 'invalid' ? '无效' :
+                      data.status === 'ratelimited' ? '限速' :
                       data.status === 'checking' ? '检测中...' : '等待检测...';
     const statusClass = data.status === 'valid' ? 'status-valid' :
                        data.status === 'invalid' ? 'status-invalid' :
+                       data.status === 'ratelimited' ? 'status-ratelimited' :
                        data.status === 'checking' ? 'status-checking' : '';
 
     // 计算余额显示
@@ -623,7 +638,7 @@ function sortResults(column) {
         }
     }
 
-    const statusOrder = { 'valid': 0, 'invalid': 1, 'checking': 2, 'pending': 3 };
+    const statusOrder = { 'valid': 0, 'invalid': 1, 'ratelimited': 2, 'checking': 3, 'pending': 4 };
 
     // 对数据数组进行排序
     const sortedData = [...resultsData].sort((a, b) => {
@@ -742,7 +757,29 @@ function copyResults() {
             showNotification('复制失败！', 'error');
         });
 
-    } else { // For 'invalid' and 'all'
+    } else if (copyType === 'invalid_keys_only') {
+        const invalidKeys = resultsData.filter(data => data.status === 'invalid').map(k => k.key).join('\n');
+        if (!invalidKeys) {
+            showNotification('没有可复制的无效密钥。', 'error');
+            return;
+        }
+        navigator.clipboard.writeText(invalidKeys).then(() => {
+            showNotification('已复制所有无效密钥！', 'success');
+        }, () => {
+            showNotification('复制失败！', 'error');
+        });
+    } else if (copyType === 'ratelimited_keys_only') {
+        const ratelimitedKeys = resultsData.filter(data => data.status === 'ratelimited').map(k => k.key).join('\n');
+        if (!ratelimitedKeys) {
+            showNotification('没有可复制的限速密钥。', 'error');
+            return;
+        }
+        navigator.clipboard.writeText(ratelimitedKeys).then(() => {
+            showNotification('已复制所有限速密钥！', 'success');
+        }, () => {
+            showNotification('复制失败！', 'error');
+        });
+    } else { // For 'invalid', 'ratelimited' and 'all'
         let dataToCopy = [];
         let typeText = '';
 

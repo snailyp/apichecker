@@ -160,6 +160,8 @@
               <option value="valid" selected>复制有效</option>
               <option value="valid_keys_only">仅复制有效Key</option>
               <option value="invalid">复制无效</option>
+              <option value="invalid_keys_only">仅复制无效Key</option>
+              <option value="ratelimited_keys_only">仅复制限速Key</option>
               <option value="all">复制全部</option>
             </select>
             <button type="button" id="copyResultsBtn">复制</button>
@@ -175,6 +177,11 @@
             <span class="stats-icon">✗</span>
             <span class="stats-label">无效</span>
             <span class="stats-count" id="invalid-count">0</span>
+          </span>
+          <span class="stats-item ratelimited-stats">
+            <span class="stats-icon">🚧</span>
+            <span class="stats-label">限速</span>
+            <span class="stats-count" id="ratelimited-count">0</span>
           </span>
         </div>
         <div class="progress-container" id="batchProgressContainer" style="display: none;">

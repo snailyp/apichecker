@@ -1419,6 +1419,15 @@ html {
   animation: pulse 1.5s infinite;
 }
 
+#batchResults .status-ratelimited {
+  color: #fd7e14;
+  font-weight: 700;
+  background: linear-gradient(90deg, #fd7e14, #ffc107);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
@@ -1736,6 +1745,20 @@ html {
 .invalid-stats .stats-label,
 .invalid-stats .stats-count {
   color: #dc3545;
+}
+
+.ratelimited-stats {
+  border-left: 4px solid #fd7e14;
+}
+
+.ratelimited-stats .stats-icon {
+  background: linear-gradient(135deg, #fd7e14, #ffc107);
+  box-shadow: 0 4px 12px rgba(253, 126, 20, 0.3);
+}
+
+.ratelimited-stats .stats-label,
+.ratelimited-stats .stats-count {
+  color: #fd7e14;
 }
 
 /* 添加动画效果 */

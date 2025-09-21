@@ -60,12 +60,12 @@ async function sendApiRequest(config) {
       
       return { success: true, data, response };
     } else {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorMessagePath
         ? getNestedProperty(errorData, errorMessagePath) || "未知错误"
         : errorData.error?.message || "未知错误";
       
-      return { success: false, error: errorMessage, errorData };
+      return { success: false, error: errorMessage, errorData, response };
     }
   } catch (error) {
     return { success: false, error: error.message };
@@ -257,10 +257,24 @@ export async function checkGeminiKey(apiKey) {
     };
   }
 
-  // 如果两个请求都失败，返回免费模型的错误信息（更具代表性，因为免费密钥无法访问付费模型是正常的）
-  const freeError = freeResult.status === 'fulfilled'
-    ? freeResult.value.error
-    : freeResult.reason?.message || "免费模型检测失败";
+  // 如果两个请求都失败，处理错误
+  const proErrorValue = proResult.status === 'fulfilled' ? proResult.value : null;
+  const freeErrorValue = freeResult.status === 'fulfilled' ? freeResult.value : null;
+
+  // 优先检查限速错误 (429)
+  if ((proErrorValue?.response?.status === 429) || (freeErrorValue?.response?.status === 429)) {
+    const ratelimitedError = proErrorValue?.response?.status === 429 ? proErrorValue : freeErrorValue;
+    return {
+      success: false,
+      status: 'ratelimited',
+      message: `🚧 Gemini API 限速: ${ratelimitedError.error}`
+    };
+  }
+
+  // 如果两个请求都失败，返回免费模型的错误信息（更具代表性）
+  const freeError = freeErrorValue
+    ? freeErrorValue.error
+    : (freeResult.reason?.message || "免费模型检测失败");
 
   return {
     success: false,
